@@ -1,7 +1,7 @@
 # 🤖 Projeto Bê-à-Bá: Bot de Atendimento Inteligente
 
 ![Status](https://img.shields.io/badge/status-em%20desenvolvimento-yellow)
-![Versão](https://img.shields.io/badge/versão-1.0-blue)
+![Versão](https://img.shields.io/badge/versão-2.0-blue)
 ![Node.js](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
 ![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)
@@ -17,9 +17,6 @@ Este repositório contém o código-fonte do **Bot de Atendimento Inteligente**,
 * [✨ Funcionalidades Principais](#-funcionalidades-principais)
 * [🛠️ Arquitetura e Tecnologias Utilizadas](#️-arquitetura-e-tecnologias-utilizadas)
 * [📂 Estrutura do Monorepo](#-estrutura-do-monorepo)
-* [🚀 Como Rodar o Projeto Localmente](#-como-rodar-o-projeto-localmente)
-* [👨‍💻 Autor](#-autor)
-* [📄 Licença](#-licença)
 
 ---
 
@@ -63,21 +60,8 @@ O sistema "Bot de Atendimento Inteligente" tem como objetivo otimizar o atendime
 - [x] **RF23-25:** Controle de acesso por login/senha, recuperação de senha por e-mail, e mecanismos de segurança de sessão, como timeout por inatividade e restrição a sessões simultâneas.
 
 ---
-+----------------+      +-------------------------+      +---------------------------+
-|                |      |                         |      |                           |
-|    Frontend    |----->|   Backend (Node.js)     |----->|  Microserviço IA (Python) |
-| (HTML,CSS,JS)  |      |  (API, Lógica, Auth)    |      | (Busca, Classificação)    |
-|                |      |                         |      |                           |
-+----------------+      +-----------+-------------+      +-------------+-------------+
-|                                  |
-|                                  |
-v                                  v
-+------------------------------------------+
-|                                          |
-|      Banco de Dados (PostgreSQL)         |
-|  (Usuários, Base de Conhec., Embeddings) |
-|                                          |
-+------------------------------------------+
+![image](https://github.com/user-attachments/assets/dedbf028-2a61-4556-b95b-bddbd2f4752e)
+
 
 | Camada | Tecnologias | Papel no Projeto |
 | :--- | :--- | :--- |
