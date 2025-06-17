@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="../css/style.css">
+    <title>Chatbot</title>
+</head>
+
+
+
+<body>
+
+
+    <div class="main-chatbot">
+
+        <div class="left-chatbot">
+
+            <div class="card-pergunta">
+                <h4>Faça sua pergunta</h4>
+                <a href="../index.html" class="back-button" title="Voltar para o Painel">
+                    <i class="bi bi-arrow-left-circle"></i> Voltar
+                </a>
+				 <label for="select-theme">Tema</label>
+				<select id="select-theme">
+					<option value="" disabled selected>Selecione...</option>
+				</select>
+				
+				<label for="select-subtheme">Micro-tema</label>
+				<select id="select-subtheme" disabled>
+					<option value="" disabled selected>Aguardando tema...</option>
+				</select>
+				
+				
+                <input type="text" id="input-pergunta" name="pergunta">
+                <button id="ask-button">Perguntar</button>
+
+            </div>
+
+        </div>
+
+
+        <div class="right-chatbot">
+
+            <div class="card-resposta">
+
+
+                <div class="area-resposta">
+                    <div class="resposta">
+
+                        <div>
+                            <h4>Veja sua resposta:</h4>
+                            <textarea id="answer-area" class="area-resposta" readonly
+                                placeholder="Sua resposta aparecerá aqui..."></textarea>
+                        </div>
+
+                    </div>
+
+                    <div class="foi-util">
+
+                        <h4>Resolveu?</h4>
+                        <button id="btn-nao">Não</button>
+                        <p id="resp-solucao"></p>
+
+                    </div>
+                </div>
+
+
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <script src="../js/chatbot.js"></script>
+
+</body>
+
+</html>

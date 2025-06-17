@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Novos documentos</title>
+        <link rel="stylesheet" href="../css/style.css">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
+    </head>
+    <body class="upload-page">
+        <div class="upload-container">
+
+            <a href="./dasboard.html" class="back-button" title="Voltar para o Painel">
+                <i class="bi bi-arrow-left-circle"></i> Voltar
+            </a>
+            
+            <h1>Novos documentos</h1>
+
+            <div class="form-document-details">
+
+                <div class="textfield">
+                    <label for="input-theme">Tema:</label>
+                    <input type="text" id="input-theme" placeholder="Ex: Cartão de Crédito" required>
+                </div>
+
+                <div class="textfield">
+                    <label for="input-subtheme">Micro-tema:</label>
+                    <input type="text" id="input-subtheme" placeholder="Ex: Fatura" required>
+                </div>
+
+                <div class="textfield">
+                    <label for="document-title">Título do Documento:</label>
+                    <input type="text" id="document-title" placeholder="Ex.: Fraude" required>
+                </div>
+
+                <div class="textfield">
+                    <label for="document-description">Descrição:</label>
+                    <textarea id="document-description" rows="4" placeholder="Breve descrição do conteúdo do documento..."></textarea>
+                </div>
+
+                <div class="textfield">
+                    <label for="text-solution">Solução:</label>
+                    <textarea id="text-solution" rows="6" placeholder="Ex.: Desbloqueio mediante atualização cadastral em loja."></textarea>
+                </div>
+
+                 <div class="textfield">
+                    <label for="document-keywords">Palavras-chave</label>
+                    <input type="text" id="document-keywords" placeholder="Ex: suspeita, fraude, loja, atualização">
+                </div>
+
+
+            </div>
+
+            <div class="drop-area" id="dropArea">
+                <input type="file" id="fileInput" accept=".pdf, .docx, application/pdf, application/vnd.openxmlformats-officedocument.wordprocessingml.document">
+                <p>Arraste e solte seu arquivo PDF ou DOCX aqui ou <span>clique para selecionar</span> (opcional)</p>
+                <div class="file-icon"></div>
+            </div>
+
+            <div class="file-list" id="fileList">
+                </div>
+
+            <button class="upload-button" id="uploadButton" disabled>Novo documento</button>
+            <p class="upload-status" id="uploadStatus"></p>
+        </div>
+
+        <script src="../js/upload.js"></script>
+    </body>
+</html>
