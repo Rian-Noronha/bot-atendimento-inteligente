@@ -1,12 +1,11 @@
 # 🤖 Projeto Bê-à-Bá: Bot de Atendimento Inteligente
 
 ![Status](https://img.shields.io/badge/status-em%20desenvolvimento-yellow)
-![Versão](https://img.shields.io/badge/versão-2.0-blue)
+![Versão](https://img.shields.io/badge/versão-1.0-blue)
 ![Node.js](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
 ![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)
-![Licença](https://img.shields.io/badge/licença-MIT-green)
 
 Este repositório contém o código-fonte do **Bot de Atendimento Inteligente**, uma aplicação completa desenvolvida como parte do Projeto Bê-à-Bá.
 
