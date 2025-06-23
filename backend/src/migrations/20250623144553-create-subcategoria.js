@@ -15,6 +15,19 @@ module.exports = {
       descricao: {
         type: Sequelize.STRING
       },
+
+      categoria_id: {
+        type: Sequelize.INTEGER,
+        allowNull: false,
+        references: {
+          model: 'categorias',
+          key: 'id'
+        },
+
+        onUpdate: 'CASCADE',
+        onDelete: 'RESTRICT'
+      },
+
       createdAt: {
         allowNull: false,
         type: Sequelize.DATE
