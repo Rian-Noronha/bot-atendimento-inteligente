@@ -27,9 +27,10 @@ const { Perfil } = require('../models');
     }
 
     exports.criarPerfil = async (req, res) => {
+        /*
         if (!validarAcessoAdmin(req.user.perfil)) {
             return res.status(403).json({ message: 'Acesso negado. Apenas administradores podem criar perfis.' });
-        }
+        }*/
 
         try {
             const { nome, descricao } = req.body;
@@ -45,9 +46,10 @@ const { Perfil } = require('../models');
     };
 
     exports.atualizarPerfil = async (req, res) => { 
+        /*
         if (!validarAcessoAdmin(req.user.perfil)) {
             return res.status(403).json({ message: 'Acesso negado. Apenas administradores podem editar perfis.' });
-        }
+        }*/
 
         try {
             const { id } = req.params;
@@ -69,9 +71,10 @@ const { Perfil } = require('../models');
     };
 
     exports.deletarPerfil = async (req, res) => {
+        /*
         if (!validarAcessoAdmin(req.user.perfil)) {
             return res.status(403).json({ message: 'Acesso negado. Apenas administradores podem deletar perfis.' });
-        }
+        }*/
 
         try {
             const { id } = req.params;
