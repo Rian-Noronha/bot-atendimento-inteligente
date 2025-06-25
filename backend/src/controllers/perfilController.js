@@ -11,6 +11,21 @@ const { Perfil } = require('../models');
         }
     };
 
+    exports.pegarPerfilPorId = async(req, res) => {
+        try{
+            const {id} = req.params;
+            const perfil = await Perfil.findByPk(id);
+
+            if(perfil){
+                res.status(200).json(perfil);
+            }else{
+                res.status(404).json({message: 'Perfil não encontrado.'});
+            }
+        }catch(error){
+            res.status(500).json({message: 'Erro ao buscar perfil.', error: error.message});
+        }
+    }
+
     exports.criarPerfil = async (req, res) => {
         if (!validarAcessoAdmin(req.user.perfil)) {
             return res.status(403).json({ message: 'Acesso negado. Apenas administradores podem criar perfis.' });
