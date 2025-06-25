@@ -3,7 +3,7 @@ const path = require('path');
 
 module.exports = {
   // Aponta para o arquivo de configuração dentro da pasta 'src'
-  'config': path.resolve('src', 'config', 'config.js'),
+  'config': path.resolve('src', 'config', 'database.js'),
 
   // Aponta para a pasta onde os models são definidos
   'models-path': path.resolve('src', 'models'),
