@@ -3,21 +3,21 @@ const {
   Model
 } = require('sequelize');
 module.exports = (sequelize, DataTypes) => {
-  class Documentos extends Model {
-    /**
-     * Helper method for defining associations.
-     * This method is not a part of Sequelize lifecycle.
-     * The `models/index` file will call this method automatically.
-     */
+  class Documento extends Model {
     static associate(models) {
       this.belongsToMany(models.PalavrasChave, {
         through: 'documentos_palavras_chave',
         foreignKey: 'documento_id',
         as: 'palavrasChave'
       });
+
+      this.belongsTo(models.Subcategoria, {
+        foreignKey: 'subcategoria_id',
+        as: 'subcategoria'
+      });
     }
   }
-  Documentos.init({
+  Documento.init({
     titulo: DataTypes.STRING,
     descricao: DataTypes.STRING,
     solucao: DataTypes.STRING,
@@ -26,8 +26,8 @@ module.exports = (sequelize, DataTypes) => {
     tipoDocumento: DataTypes.STRING
   }, {
     sequelize,
-    modelName: 'Documentos',
+    modelName: 'Documento',
     tableName: 'documentos'
   });
-  return Documentos;
+  return Documento;
 };
