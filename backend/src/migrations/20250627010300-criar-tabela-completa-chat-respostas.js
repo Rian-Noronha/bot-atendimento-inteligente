@@ -9,12 +9,10 @@ module.exports = {
         primaryKey: true,
         type: Sequelize.INTEGER
       },
-      
       texto_resposta: {
-        type: Sequelize.STRING,
+        type: Sequelize.STRING(500),
         allowNull: false
       },
-
       consulta_id: {
         type: Sequelize.INTEGER,
         allowNull: false,
@@ -22,9 +20,18 @@ module.exports = {
           model: 'chat_consultas',
           key: 'id'
         },
-
         onUpdate: 'CASCADE',
-        onDelete: 'RESTRICT'
+        onDelete: 'CASCADE' 
+      },
+      documento_fonte: {
+        type: Sequelize.INTEGER,
+        allowNull: true,
+        references: {
+          model: 'documentos',
+          key: 'id'
+        },
+        onUpdate: 'CASCADE',
+        onDelete: 'SET NULL'
       },
       createdAt: {
         allowNull: false,
@@ -36,7 +43,9 @@ module.exports = {
       }
     });
   },
+
   async down(queryInterface, Sequelize) {
     await queryInterface.dropTable('chat_respostas');
   }
 };
+    

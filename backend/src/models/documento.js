@@ -15,6 +15,12 @@ module.exports = (sequelize, DataTypes) => {
         foreignKey: 'subcategoria_id',
         as: 'subcategoria'
       });
+
+      this.hasMany(models.ChatResposta, {
+        foreignKey: 'documento_fonte',
+        as: 'respostasGeradas'
+      });
+
     }
   }
   Documento.init({

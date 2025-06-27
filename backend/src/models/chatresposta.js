@@ -4,17 +4,22 @@ const {
 } = require('sequelize');
 module.exports = (sequelize, DataTypes) => {
   class ChatResposta extends Model {
-    /**
-     * Helper method for defining associations.
-     * This method is not a part of Sequelize lifecycle.
-     * The `models/index` file will call this method automatically.
-     */
     static associate(models) {
-      // define association here
+      this.belongsTo(models.ChatConsulta, {
+        foreignKey: 'consulta_id',
+        as: 'consulta'
+      });
+
+      this.belongsTo(models.Documento, {
+        foreignKey: 'documento_fonte',
+        as: 'fonte'
+      });
     }
   }
   ChatResposta.init({
-    textoResposta: DataTypes.STRING
+    texto_resposta: DataTypes.STRING,
+    consulta_id: DataTypes.INTEGER,
+    documento_fonte: DataTypes.INTEGER
   }, {
     sequelize,
     modelName: 'ChatResposta',
