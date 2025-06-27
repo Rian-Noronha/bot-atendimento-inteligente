@@ -9,6 +9,11 @@ module.exports = (sequelize, DataTypes) => {
         foreignKey: 'perfil_id',
         as: 'perfil'
       });
+
+      this.hasMany(models.ChatSessao, {
+        foreignKey: 'usuario_id',
+        as: 'sessoes'
+      });
     }
   }
   Usuario.init({
