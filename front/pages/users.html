@@ -124,12 +124,11 @@
                         <label for="edit-user-email">E-mail</label>
                         <input type="email" id="edit-user-email" required>
                     </div>
-                    <div class="textfield">
+                     <div class="textfield">
                         <label for="edit-user-type">Tipo de Acesso</label>
                         <select id="edit-user-type">
-                            <option value="operador">Operador</option>
-                            <option value="administrador">Administrador</option>
-                        </select>
+                            <option value="" disabled selected>Carregando Perfis...</option>
+                            </select>
                     </div>
                     <div class="modal-actions">
                         <button type="submit" class="btn-save">Salvar</button>
@@ -138,6 +137,8 @@
                 </form>
             </div>
         </div>
-        <script src="../js/users.js"></script>
+        <script type="module" src="../js/services/apiPerfilService.js"></script>
+        <script type="module" src="../js/services/apiUsuarioService.js"></script>
+        <script type="module" src="../js/users.js"></script>
     </body>
 </html>

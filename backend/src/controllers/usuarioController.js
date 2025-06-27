@@ -1,16 +1,20 @@
+// Importa os models necessários, incluindo o Perfil para as associações
 const { Usuario, Perfil } = require('../models');
 const bcrypt = require('bcrypt');
 
-//listar todos os usuários junto ao seu perfil
+/**
+ * Lista todos os usuários e inclui a informação do seu perfil.
+ */
 exports.pegarTodosUsuarios = async (req, res) => {
     try {
-       
         const usuarios = await Usuario.findAll({
+            attributes: { exclude: ['senha_hash'] }, // Nunca expor o hash da senha
             include: [{
                 model: Perfil,
-                as: 'perfil', // Usa o 'as' definido na associação do model
-                attributes: ['nome'] // Pega apenas o campo 'nome' do perfil
-            }]
+                as: 'perfil',
+                attributes: ['id', 'nome'] // Inclui o ID e o nome do perfil
+            }],
+            order: [['nome', 'ASC']]
         });
         res.status(200).json(usuarios);
     } catch (error) {
@@ -18,12 +22,15 @@ exports.pegarTodosUsuarios = async (req, res) => {
     }
 };
 
-//listar um usuário via seu id juntando-o ao seu perfil
+/**
+ * Busca um único usuário pelo ID, também incluindo o perfil.
+ */
 exports.pegarUsuarioPorId = async (req, res) => {
     try {
         const { id } = req.params;
         const usuario = await Usuario.findByPk(id, {
-            include: [{ model: Perfil, as: 'perfil', attributes: ['nome'] }]
+            attributes: { exclude: ['senha_hash'] },
+            include: [{ model: Perfil, as: 'perfil', attributes: ['id', 'nome'] }]
         });
 
         if (usuario) {
@@ -36,7 +43,9 @@ exports.pegarUsuarioPorId = async (req, res) => {
     }
 };
 
-//criando um novo usuário com sua senha hash
+/**
+ * Cria um novo usuário com senha criptografada.
+ */
 exports.criarUsuario = async (req, res) => {
     try {
         const { nome, email, senha, perfil_id } = req.body;
@@ -44,19 +53,11 @@ exports.criarUsuario = async (req, res) => {
             return res.status(400).json({ message: "Todos os campos (nome, email, senha, perfil_id) são obrigatórios." });
         }
 
-        // Criptografa a senha antes de salvar
         const salt = await bcrypt.genSalt(10);
         const senha_hash = await bcrypt.hash(senha, salt);
 
-        const novoUsuario = await Usuario.create({
-            nome,
-            email,
-            senha_hash, // Salva a senha criptografada
-            perfil_id,
-            ativo: true // Define como ativo por padrão
-        });
+        const novoUsuario = await Usuario.create({ nome, email, senha_hash, perfil_id, ativo: true });
 
-        // Não retorna a senha no response
         const { senha_hash: _, ...usuarioSemSenha } = novoUsuario.toJSON();
         res.status(201).json(usuarioSemSenha);
 
@@ -65,28 +66,51 @@ exports.criarUsuario = async (req, res) => {
     }
 };
 
-//atualizando usuário, sua senha deve atualizada com um controller específico
+/**
+ * Atualiza um usuário existente.
+ * CORRIGIDO: Esta versão garante que o perfil_id seja processado corretamente.
+ */
 exports.atualizarUsuario = async (req, res) => {
     try {
         const { id } = req.params;
         const { nome, email, perfil_id, ativo } = req.body;
 
-        const [updated] = await Usuario.update({ nome, email, perfil_id, ativo }, {
+        // 1. Cria um objeto apenas com os dados que queremos atualizar
+        const dadosParaAtualizar = {
+            nome,
+            email,
+            perfil_id,
+            ativo
+        };
+        
+        // Adiciona um log para vermos exatamente o que o servidor está a receber
+        console.log(`Atualizando usuário ID ${id} com os dados:`, dadosParaAtualizar);
+
+        // 2. Executa o update com os dados explícitos
+        const [numLinhasAtualizadas] = await Usuario.update(dadosParaAtualizar, {
             where: { id: id }
         });
 
-        if (updated) {
-            const usuarioAtualizado = await Usuario.findByPk(id);
+        // 3. Verifica se alguma linha foi de facto atualizada
+        if (numLinhasAtualizadas > 0) {
+            // Busca o utilizador atualizado com o seu novo perfil para devolver a resposta
+            const usuarioAtualizado = await Usuario.findByPk(id, {
+                include: [{ model: Perfil, as: 'perfil', attributes: ['nome'] }]
+            });
             res.status(200).json(usuarioAtualizado);
         } else {
-            res.status(404).json({ message: "Usuário não encontrado." });
+            res.status(404).json({ message: "Usuário não encontrado ou dados são os mesmos." });
         }
     } catch (error) {
+        // Adiciona um log de erro mais detalhado no servidor
+        console.error("ERRO AO ATUALIZAR USUÁRIO:", error);
         res.status(500).json({ message: "Erro ao atualizar usuário", error: error.message });
     }
 };
 
-
+/**
+ * Deleta um usuário.
+ */
 exports.deletarUsuario = async (req, res) => {
     try {
         const { id } = req.params;

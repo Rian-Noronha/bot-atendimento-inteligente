@@ -15,8 +15,13 @@ const assuntoPendenteRoutes = require('./routes/assuntoPendenteRoutes');
 const feedbackRoutes = require('./routes/feedbackRoutes');
 
 const app = express();
+const corsOptions = {
+  origin: '*', // Permite qualquer origem.
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+};
 
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(express.json());
 
 
