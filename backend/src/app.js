@@ -12,6 +12,7 @@ const chatSessaoRoutes = require('./routes/chatSessaoRoutes');
 const chatConsultaRoutes = require('./routes/chatConsultaRoutes');
 const chatRespostaRoutes = require('./routes/chatRespostaRoutes');
 const assuntoPendenteRoutes = require('./routes/assuntoPendenteRoutes');
+const feedbackRoutes = require('./routes/feedbackRoutes');
 
 const app = express();
 
@@ -29,6 +30,7 @@ app.use('/api', chatSessaoRoutes);
 app.use('/api', chatConsultaRoutes);
 app.use('/api', chatRespostaRoutes);
 app.use('/api', assuntoPendenteRoutes);
+app.use('/api', feedbackRoutes);
 
 
 module.exports = app;

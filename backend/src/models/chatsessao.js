@@ -1,7 +1,5 @@
 'use strict';
-const {
-  Model
-} = require('sequelize');
+const { Model } = require('sequelize');
 module.exports = (sequelize, DataTypes) => {
   class ChatSessao extends Model {
     static associate(models) {
@@ -9,7 +7,6 @@ module.exports = (sequelize, DataTypes) => {
         foreignKey: 'usuario_id',
         as: 'usuario'
       });
-
       this.hasMany(models.ChatConsulta, {
         foreignKey: 'sessao_id',
         as: 'consultas'
@@ -17,19 +14,8 @@ module.exports = (sequelize, DataTypes) => {
     }
   }
   ChatSessao.init({
-    usuario_id: {
-      type: DataTypes.INTEGER,
-      allowNull: false
-    },
-    registro_inicio: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW
-    },
-    registro_fim: {
-      type: DataTypes.DATE,
-      allowNull: true 
-    }
+    registro_inicio: DataTypes.DATE,
+    registro_fim: DataTypes.DATE
   }, {
     sequelize,
     modelName: 'ChatSessao',

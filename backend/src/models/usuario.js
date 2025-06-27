@@ -1,7 +1,5 @@
 'use strict';
-const {
-  Model
-} = require('sequelize');
+const { Model } = require('sequelize');
 module.exports = (sequelize, DataTypes) => {
   class Usuario extends Model {
     static associate(models) {
@@ -9,7 +7,6 @@ module.exports = (sequelize, DataTypes) => {
         foreignKey: 'perfil_id',
         as: 'perfil'
       });
-
       this.hasMany(models.ChatSessao, {
         foreignKey: 'usuario_id',
         as: 'sessoes'

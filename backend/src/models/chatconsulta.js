@@ -1,25 +1,12 @@
 'use strict';
-const {
-  Model
-} = require('sequelize');
+const { Model } = require('sequelize');
 module.exports = (sequelize, DataTypes) => {
   class ChatConsulta extends Model {
     static associate(models) {
-      this.belongsTo(models.ChatSessao, {
-        foreignKey: 'sessao_id',
-        as: 'sessao'
-      });
-
-      this.hasOne(models.ChatResposta, {
-        foreignKey: 'consulta_id',
-        as: 'resposta'
-      });
-
-      this.hasOne(models.AssuntoPendente, { 
-        foreignKey: 'consulta_id', 
-        as: 'assuntoPendente' 
-      });
-
+      this.belongsTo(models.ChatSessao, { foreignKey: 'sessao_id', as: 'sessao' });
+      this.belongsTo(models.Subcategoria, { foreignKey: 'subcategoria_id', as: 'subcategoria' });
+      this.hasOne(models.ChatResposta, { foreignKey: 'consulta_id', as: 'resposta' });
+      this.hasOne(models.AssuntoPendente, { foreignKey: 'consulta_id', as: 'assuntoPendente' });
     }
   }
   ChatConsulta.init({

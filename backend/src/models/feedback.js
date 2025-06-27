@@ -1,25 +1,23 @@
 'use strict';
-const {
-  Model
-} = require('sequelize');
+const { Model } = require('sequelize');
 module.exports = (sequelize, DataTypes) => {
-  class feedback extends Model {
-    /**
-     * Helper method for defining associations.
-     * This method is not a part of Sequelize lifecycle.
-     * The `models/index` file will call this method automatically.
-     */
+  // CORRIGIDO: Nome da classe em PascalCase
+  class Feedback extends Model {
     static associate(models) {
-      // define association here
+      this.belongsTo(models.ChatResposta, {
+        foreignKey: 'resposta_id',
+        as: 'resposta'
+      });
     }
   }
-  feedback.init({
+  Feedback.init({
+    nota: DataTypes.FLOAT,
     comentario: DataTypes.STRING,
     util: DataTypes.BOOLEAN
   }, {
     sequelize,
-    modelName: 'feedback',
+    modelName: 'Feedback', // CORRIGIDO: Nome do modelo em PascalCase
     tableName: 'feedbacks'
   });
-  return feedback;
+  return Feedback;
 };

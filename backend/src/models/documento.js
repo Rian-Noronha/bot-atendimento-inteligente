@@ -1,26 +1,18 @@
 'use strict';
-const {
-  Model
-} = require('sequelize');
+const { Model } = require('sequelize');
 module.exports = (sequelize, DataTypes) => {
+  // CORRIGIDO: Nome da classe para o singular
   class Documento extends Model {
     static associate(models) {
-      this.belongsToMany(models.PalavrasChave, {
-        through: 'documentos_palavras_chave',
-        foreignKey: 'documento_id',
-        as: 'palavrasChave'
-      });
-
       this.belongsTo(models.Subcategoria, {
         foreignKey: 'subcategoria_id',
         as: 'subcategoria'
       });
-
-      this.hasMany(models.ChatResposta, {
-        foreignKey: 'documento_fonte',
-        as: 'respostasGeradas'
+      this.belongsToMany(models.PalavraChave, {
+        through: 'documentos_palavras_chave',
+        foreignKey: 'documento_id',
+        as: 'palavrasChave'
       });
-
     }
   }
   Documento.init({
@@ -32,7 +24,7 @@ module.exports = (sequelize, DataTypes) => {
     tipoDocumento: DataTypes.STRING
   }, {
     sequelize,
-    modelName: 'Documento',
+    modelName: 'Documento', // CORRIGIDO: Nome do model para o singular
     tableName: 'documentos'
   });
   return Documento;

@@ -1,25 +1,15 @@
 'use strict';
-const {
-  Model
-} = require('sequelize');
+const { Model } = require('sequelize');
 module.exports = (sequelize, DataTypes) => {
   class ChatResposta extends Model {
     static associate(models) {
-      this.belongsTo(models.ChatConsulta, {
-        foreignKey: 'consulta_id',
-        as: 'consulta'
-      });
-
-      this.belongsTo(models.Documento, {
-        foreignKey: 'documento_fonte',
-        as: 'fonte'
-      });
+      this.belongsTo(models.ChatConsulta, { foreignKey: 'consulta_id', as: 'consulta' });
+      this.belongsTo(models.Documento, { foreignKey: 'documento_fonte', as: 'fonte' });
+      this.hasMany(models.Feedback, { foreignKey: 'resposta_id', as: 'feedbacks' });
     }
   }
   ChatResposta.init({
-    texto_resposta: DataTypes.STRING,
-    consulta_id: DataTypes.INTEGER,
-    documento_fonte: DataTypes.INTEGER
+    texto_resposta: DataTypes.STRING(500)
   }, {
     sequelize,
     modelName: 'ChatResposta',
