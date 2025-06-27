@@ -9,6 +9,7 @@ const usuarioRoutes = require('./routes/usuarioRoutes');
 const subcategoriaRoutes = require('./routes/subcategoriaRoutes');
 const documentoRoutes = require('./routes/documentoRoutes');
 const chatSessaoRoutes = require('./routes/chatSessaoRoutes');
+const chatConsultaRoutes = require('./routes/chatConsultaRoutes');
 
 const app = express();
 
@@ -23,6 +24,7 @@ app.use('/api', usuarioRoutes);
 app.use('/api', subcategoriaRoutes);
 app.use('/api', documentoRoutes);
 app.use('/api', chatSessaoRoutes);
+app.use('/api', chatConsultaRoutes);
 
 
 module.exports = app;
