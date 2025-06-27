@@ -14,6 +14,12 @@ module.exports = (sequelize, DataTypes) => {
         foreignKey: 'consulta_id',
         as: 'resposta'
       });
+
+      this.hasOne(models.AssuntoPendente, { 
+        foreignKey: 'consulta_id', 
+        as: 'assuntoPendente' 
+      });
+
     }
   }
   ChatConsulta.init({

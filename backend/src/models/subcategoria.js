@@ -9,8 +9,16 @@ module.exports = (sequelize, DataTypes) => {
         foreignKey: 'categoria_id', 
         as: 'categoria' 
       });
+
+
+      this.hasMany(models.AssuntoPendente, { 
+        foreignKey: 'subcategoria_id', 
+        as: 'assuntosPendentes' 
+      });
+
     }
   }
+  
   Subcategoria.init({
     nome: DataTypes.STRING,
     descricao: DataTypes.STRING
