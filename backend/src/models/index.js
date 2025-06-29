@@ -2,8 +2,10 @@
 
 const fs = require('fs');
 const path = require('path');
-const Sequelize = require('sequelize');
+const Sequelize = require('sequelize'); // O objeto que precisamos está aqui
 const process = require('process');
+const { registerType } = require('pgvector/sequelize');
+
 const basename = path.basename(__filename);
 const env = process.env.NODE_ENV || 'development';
 const config = require(__dirname + '/../config/database.js')[env];
@@ -15,6 +17,12 @@ if (config.use_env_variable) {
 } else {
   sequelize = new Sequelize(config.database, config.username, config.password, config);
 }
+
+// --- CORREÇÃO APLICADA AQUI ---
+// Em vez de passar a instância 'sequelize', passamos o construtor 'Sequelize'.
+// A função precisa do objeto principal para aceder a Sequelize.DataTypes.
+registerType(Sequelize);
+// ----------------------------
 
 fs
   .readdirSync(__dirname)

@@ -21,7 +21,11 @@ module.exports = (sequelize, DataTypes) => {
     solucao: DataTypes.STRING,
     ativo: DataTypes.BOOLEAN,
     urlArquivo: DataTypes.STRING,
-    tipoDocumento: DataTypes.STRING
+    tipoDocumento: DataTypes.STRING,
+    embedding: {
+      type: DataTypes.VECTOR(768), 
+      allowNull: true
+    }
   }, {
     sequelize,
     modelName: 'Documento', // CORRIGIDO: Nome do model para o singular
