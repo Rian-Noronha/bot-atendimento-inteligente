@@ -1,6 +1,6 @@
 // js/knowledgeLibrary.js
 
-// Importa todos os serviços de API necessários
+// Importa todos os serviços de API necessários para interagir com o backend
 import { apiKnowledgeLibraryService } from './services/apiKnowledgeLibraryService.js';
 import { apiPalavraChaveService } from './services/apiPalavraChaveService.js'; 
 
@@ -25,11 +25,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const editDocumentKeywords = document.getElementById('edit-document-keywords');
     const btnCancelDocument = editModal.querySelector('.btn-cancel');
 
-    // Variável para guardar todos os documentos da API, evitando chamadas repetidas.
+    // Variável para guardar todos os documentos da API, evitando chamadas repetidas para pesquisa
     let allDocuments = [];
 
-    // --- LÓGICA DE SESSÃO E TIMEOUT (Mantida como está) ---
-    // ... O seu código de sessão e timeout está correto e pode ser mantido aqui ...
+    // --- LÓGICA DE SESSÃO E TIMEOUT (Pode ser mantida como estava) ---
+    // (O seu código de gestão de sessão e timeout pode ser colocado aqui)
 
     /**
      * Busca todos os documentos da API, guarda-os na variável `allDocuments`,
@@ -60,9 +60,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Filtra os documentos com base no termo de pesquisa
         const filteredDocuments = allDocuments.filter(doc => {
-            // Cria uma string com todas as palavras-chave para facilitar a pesquisa
             const palavrasChaveString = doc.palavrasChave.map(p => p.palavra).join(' ');
-
             // Verifica se o termo de pesquisa existe em qualquer um dos campos relevantes
             return (
                 doc.subcategoria?.categoria?.nome.toLowerCase().includes(searchTerm) ||
@@ -84,11 +82,8 @@ document.addEventListener('DOMContentLoaded', () => {
             
             filteredDocuments.forEach(doc => {
                 const row = knowledgeLibraryTableBody.insertRow();
-                row.dataset.documentId = doc.id;
-
                 const keywordsDisplay = doc.palavrasChave.map(p => p.palavra).join(', ');
 
-                // Insere os dados nas células, acedendo aos objetos aninhados com segurança
                 row.innerHTML = `
                     <td data-label="Tema">${doc.subcategoria?.categoria?.nome || '<span class="text-danger">Sem Tema</span>'}</td>
                     <td data-label="Micro-tema">${doc.subcategoria?.nome || '<span class="text-danger">Sem Micro-tema</span>'}</td>
@@ -106,10 +101,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /**
-     * Abre o modal de edição e preenche os campos com os dados do documento selecionado.
-     * @param {number} docId - O ID do documento a ser editado.
+     * Abre o modal de edição e preenche os campos com os dados do documento.
      */
-    async function openEditModal(docId) {
+    function openEditModal(docId) {
         const doc = allDocuments.find(d => d.id === docId);
         if (!doc) {
             alert("Documento não encontrado. Tente recarregar a página.");
@@ -117,26 +111,34 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         editDocumentId.value = doc.id;
-        // Campos de categoria são apenas para leitura para simplificar a UI de edição
         editDocumentTema.value = doc.subcategoria?.categoria?.nome || 'N/A';
         editDocumentTema.readOnly = true; 
         editDocumentMicrotema.value = doc.subcategoria?.nome || 'N/A';
         editDocumentMicrotema.readOnly = true;
-
         editDocumentTitle.value = doc.titulo;
         editDocumentDescription.value = doc.descricao || '';
         editDocumentSolution.value = doc.solucao || '';
         editDocumentKeywords.value = doc.palavrasChave.map(p => p.palavra).join(', ');
 
         editModal.style.display = 'flex';
-        editModal.classList.add('active');
+        setTimeout(() => editModal.classList.add('active'), 10);
     }
 
+    /**
+     * Fecha o modal de edição de forma robusta, aguardando a animação terminar.
+     */
     function closeEditModal() {
         editModal.classList.remove('active');
-        editForm.reset();
-        editDocumentTema.readOnly = false;
-        editDocumentMicrotema.readOnly = false;
+        
+        function onTransitionEnd() {
+            editModal.style.display = 'none';
+            editForm.reset();
+            editDocumentTema.readOnly = false;
+            editDocumentMicrotema.readOnly = false;
+            editModal.removeEventListener('transitionend', onTransitionEnd);
+        }
+
+        editModal.addEventListener('transitionend', onTransitionEnd);
     }
 
     // --- Listeners de Eventos ---
@@ -158,8 +160,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     /**
-     * Lida com a exclusão de um documento.
-     * @param {number} docId - O ID do documento a ser excluído.
+     * Lida com a exclusão de um documento chamando o serviço da API.
      */
     async function handleDeleteDocument(docId) {
         try {
@@ -178,7 +179,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const docId = parseInt(editDocumentId.value);
         
         try {
-            // Processa as palavras-chave da mesma forma que na criação
             const keywordsString = editDocumentKeywords.value.trim();
             let palavrasChaveIds = [];
             if (keywordsString) {
@@ -193,13 +193,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 titulo: editDocumentTitle.value.trim(),
                 descricao: editDocumentDescription.value.trim(),
                 solucao: editDocumentSolution.value.trim(),
-                palavrasChaveIds: palavrasChaveIds, // Envia o array de IDs para serem atualizados
+                palavrasChaveIds: palavrasChaveIds,
             };
 
             await apiKnowledgeLibraryService.atualizar(docId, updatedData);
             alert('Documento atualizado com sucesso!');
             closeEditModal();
-            fetchAndRenderDocuments(); // Atualiza a tabela com os novos dados
+            fetchAndRenderDocuments();
 
         } catch (error) {
             alert(`Erro ao atualizar o documento: ${error.message}`);
@@ -207,11 +207,26 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Outros listeners
+    // Outros listeners para funcionalidades da página
     addKnowledgeLibraryButton.addEventListener('click', () => window.location.href = './upload.html');
     btnCancelDocument.addEventListener('click', closeEditModal);
     searchInput.addEventListener('input', renderDocuments);
 
+    // Fecha o modal ao clicar no overlay (fora da área de conteúdo)
+    editModal.addEventListener('click', (event) => {
+        if (event.target === editModal) {
+            closeEditModal();
+        }
+    });
+
+    // Fecha o modal ao pressionar a tecla 'Escape'
+    window.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && editModal.classList.contains('active')) {
+            closeEditModal();
+        }
+    });
+
     // --- Chamada Inicial ---
+    // Busca e renderiza os documentos assim que a página é carregada.
     fetchAndRenderDocuments();
 });
