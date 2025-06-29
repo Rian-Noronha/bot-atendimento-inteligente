@@ -1,149 +1,158 @@
+// js/upload.js
+
+// Importando os serviços de API para comunicação com o backend
+import { apiCategoriaService } from './services/apiCategoriaService.js';
+import { apiPalavraChaveService } from './services/apiPalavraChaveService.js';
+import { apiKnowledgeLibraryService } from './services/apiKnowledgeLibraryService.js';
+
 document.addEventListener('DOMContentLoaded', () => {
-        // --- SELEÇÃO DOS ELEMENTOS ---
-        // Apontando para os inputs de texto para tema e micro-tema
-        const themeInput = document.getElementById('input-theme');
-        const subthemeInput = document.getElementById('input-subtheme');
-        
-        // Outros elementos da página
-        const dropArea = document.getElementById('dropArea');
-        const fileInput = document.getElementById('fileInput');
-        const fileList = document.getElementById('fileList');
-        const uploadButton = document.getElementById('uploadButton');
-        const uploadStatus = document.getElementById('uploadStatus');
-        const documentTitleInput = document.getElementById('document-title');
-        const documentDescriptionTextarea = document.getElementById('document-description');
-        const documentKeywordsInput = document.getElementById('document-keywords');
-        const textSolutionTextarea = document.getElementById('text-solution'); 
-        
-        // --- LÓGICA DE SESSÃO E TIMEOUT ---
-        // Todo o seu código de sessão e timeout que você já tinha. Está correto.
-        const TIMEOUT_DURATION = 5 * 60 * 1000; 
-        let timeoutInterval;
-        function resetTimeoutTimer() { localStorage.setItem('last_activity_time', Date.now()); }
-        function logoutUser() {
-            clearInterval(timeoutInterval);
-            localStorage.clear();
-            sessionStorage.clear();
-            alert('Sua sessão expirou por inatividade. Por favor, faça login novamente.');
-            window.location.href = '../index.html';
-        }
-        function checkTimeout() {
-            const lastActivityTime = parseInt(localStorage.getItem('last_activity_time') || '0', 10);
-            if (Date.now() - lastActivityTime > TIMEOUT_DURATION) {
-                logoutUser();
-            }
-        }
-        function startTimeoutMonitoring() {
-            const activityEvents = ['mousemove', 'mousedown', 'keypress', 'scroll', 'touchstart'];
-            activityEvents.forEach(event => window.addEventListener(event, resetTimeoutTimer));
-            timeoutInterval = setInterval(checkTimeout, 5000);
-        }
-        startTimeoutMonitoring();
-        const currentSessionId = localStorage.getItem('active_session_id');
-        if (!sessionStorage.getItem('my_tab_session_id')) {
-            sessionStorage.setItem('my_tab_session_id', currentSessionId);
-        } else if (sessionStorage.getItem('my_tab_session_id') !== currentSessionId) {
-            alert('Sua sessão foi encerrada em outra aba. Você será desconectado.');
-            window.location.href = '../index.html';
-        }
-        window.addEventListener('storage', (event) => {
-            if (event.key === 'active_session_id' && event.newValue !== sessionStorage.getItem('my_tab_session_id')) {
-                alert('Sua sessão foi encerrada porque você se conectou em uma nova aba ou janela.');
-                window.location.href = '../index.html';
-            }
-        });
+    // --- SELEÇÃO DOS ELEMENTOS DO FORMULÁRIO ---
+    const themeSelect = document.getElementById('select-theme');
+    const subthemeSelect = document.getElementById('select-subtheme');
+    const uploadButton = document.getElementById('uploadButton');
+    const uploadStatus = document.getElementById('uploadStatus');
+    const documentTitleInput = document.getElementById('document-title');
+    const documentDescriptionTextarea = document.getElementById('document-description');
+    const documentKeywordsInput = document.getElementById('document-keywords');
+    const textSolutionTextarea = document.getElementById('text-solution');
+    // CORRIGIDO: A variável 'form' não é mais necessária para o reset.
+    const formContainer = document.querySelector('.form-document-details');
 
-        // --- LÓGICA DA PÁGINA DE UPLOAD ---
-        let filesToUpload = [];
+    // --- O seu código de sessão e timeout pode ser mantido aqui, pois está correto. ---
 
-        function updateFileList() {
-            fileList.innerHTML = '';
-            if (filesToUpload.length > 0) {
-                fileList.style.display = 'block';
-                const file = filesToUpload[0];
-                const listItem = document.createElement('div');
-                listItem.classList.add('file-list-item');
-                listItem.innerHTML = `<span class="file-name">${file.name} (${(file.size / 1024).toFixed(2)} KB)</span><button type="button" class="remove-file"><i class="bi bi-x-lg"></i></button>`;
-                fileList.appendChild(listItem);
-            } else {
-                fileList.style.display = 'none';
-            }
+    /**
+     * Popula o <select> de Temas (Categorias) buscando dados da API.
+     */
+    async function popularTemas() {
+        try {
+            const temas = await apiCategoriaService.pegarTodasCategorias();
+            themeSelect.innerHTML = '<option value="">Selecione um tema...</option>';
+            temas.forEach(tema => {
+                const option = new Option(tema.nome, tema.id);
+                themeSelect.add(option);
+            });
+        } catch (error) {
+            console.error('Erro ao carregar temas:', error);
+            uploadStatus.textContent = 'Erro ao carregar categorias. Tente recarregar a página.';
+            uploadStatus.style.color = 'red';
+        }
+    }
+
+    /**
+     * Popula o <select> de Micro-temas baseado no tema selecionado.
+     */
+    async function popularMicroTemas() {
+        const temaId = themeSelect.value;
+        subthemeSelect.innerHTML = '<option value="">A carregar...</option>';
+        subthemeSelect.disabled = true;
+
+        if (!temaId) {
+            subthemeSelect.innerHTML = '<option value="">Escolha um tema primeiro...</option>';
+            checkFormValidity();
+            return;
+        }
+
+        try {
+            const microtemas = await apiCategoriaService.pegarSubcategoriasPorCategoriaId(temaId);
+            subthemeSelect.innerHTML = '<option value="">Selecione um micro-tema...</option>';
+            microtemas.forEach(sub => {
+                const option = new Option(sub.nome, sub.id);
+                subthemeSelect.add(option);
+            });
+            subthemeSelect.disabled = false;
+        } catch (error) {
+            console.error('Erro ao carregar micro-temas:', error);
+            subthemeSelect.innerHTML = '<option value="">Erro ao carregar</option>';
+        } finally {
             checkFormValidity();
         }
-        
-        // ... (suas funções addFiles e de drag-and-drop continuam aqui) ...
+    }
 
-        /**
-         * VERIFICAÇÃO DE FORMULÁRIO ATUALIZADA
-         * Agora verifica se os campos de texto de tema e micro-tema foram preenchidos.
-         */
-        function checkFormValidity() {
-            const hasFile = filesToUpload.length === 1;
-            const titleFilled = documentTitleInput.value.trim() !== '';
-            const solutionTextFilled = textSolutionTextarea.value.trim() !== '';
-            // VERIFICAÇÃO DOS NOVOS CAMPOS DE TEXTO
-            const themeFilled = themeInput.value.trim() !== '';
-            const subthemeFilled = subthemeInput.value.trim() !== '';
-            
-            const isFormValid = titleFilled && themeFilled && subthemeFilled && (hasFile || solutionTextFilled);
-            uploadButton.disabled = !isFormValid;
-            uploadButton.textContent = uploadButton.disabled ? 'Novo documento' : 'Enviar';
+    /**
+     * LÓGICA DE UPLOAD REAL, CONECTADA AO BACKEND
+     */
+    uploadButton.addEventListener('click', async () => {
+        if (uploadButton.disabled) {
+            alert('Por favor, preencha todos os campos obrigatórios.');
+            return;
         }
 
-        // Adiciona "ouvintes" de evento para todos os campos relevantes para a validação
-        themeInput.addEventListener('input', checkFormValidity);
-        subthemeInput.addEventListener('input', checkFormValidity);
-        documentTitleInput.addEventListener('input', checkFormValidity);
-        textSolutionTextarea.addEventListener('input', checkFormValidity);
-        // (outros ouvintes como o de descrição e keywords podem ser adicionados aqui também se forem obrigatórios)
+        uploadStatus.textContent = 'A processar e a enviar...';
+        uploadStatus.style.color = '#333';
+        uploadButton.disabled = true;
 
-        /**
-         * LÓGICA DE UPLOAD ATUALIZADA
-         * Captura os valores dos inputs de texto de tema e micro-tema.
-         */
-        uploadButton.addEventListener('click', () => {
-            // Validações iniciais (se necessário, podem ser removidas se a `checkFormValidity` já cuida de tudo)
-            if (uploadButton.disabled) {
-                alert('Por favor, preencha todos os campos obrigatórios.');
-                return;
+        try {
+            // 1. Processar as Palavras-chave
+            const keywordsString = documentKeywordsInput.value.trim();
+            let palavrasChaveIds = [];
+            if (keywordsString) {
+                const palavrasArray = keywordsString.split(',').map(p => p.trim()).filter(Boolean);
+                if (palavrasArray.length > 0) {
+                    const palavrasChaveSalvas = await apiPalavraChaveService.encontrarOuCriarLote(palavrasArray);
+                    palavrasChaveIds = palavrasChaveSalvas.map(p => p.id);
+                }
             }
 
-            // Captura os valores dos campos de texto
-            const themeValue = themeInput.value.trim();
-            const subthemeValue = subthemeInput.value.trim();
+            // 2. Montar o objeto do documento para envio
+            const dadosDocumento = {
+                titulo: documentTitleInput.value.trim(),
+                descricao: documentDescriptionTextarea.value.trim(),
+                solucao: textSolutionTextarea.value.trim(),
+                subcategoria_id: parseInt(subthemeSelect.value, 10),
+                palavrasChaveIds: palavrasChaveIds,
+            };
+
+            // 3. Chamar o serviço para criar o documento na API
+            await apiKnowledgeLibraryService.criar(dadosDocumento);
+
+            uploadStatus.textContent = 'Documento salvo com sucesso!';
+            uploadStatus.style.color = 'green';
             
-            uploadStatus.textContent = 'Simulando envio...';
-            uploadButton.disabled = true;
+            // --- CORREÇÃO APLICADA AQUI ---
+            // Em vez de 'form.reset()', limpamos cada campo manualmente.
+            documentTitleInput.value = '';
+            documentDescriptionTextarea.value = '';
+            textSolutionTextarea.value = '';
+            documentKeywordsInput.value = '';
+            themeSelect.value = ''; // Reseta o select de tema
+            subthemeSelect.innerHTML = '<option value="">Escolha um tema primeiro...</option>'; // Reseta o de subtema
+            subthemeSelect.disabled = true;
+            // --- FIM DA CORREÇÃO ---
             
+            checkFormValidity();
+
             setTimeout(() => {
+                alert('Documento criado com sucesso! A redirecionar...');
+                window.location.href = './knowledge_library.html'; // Redireciona para a lista
+            }, 1000);
 
-                console.log('Tema:', themeValue);
-                console.log('Micro-tema:', subthemeValue);
-                console.log('Título:', documentTitleInput.value.trim());
-                console.log('Descrição:', documentDescriptionTextarea.value.trim());
-                console.log('Palavras-chave:', documentKeywordsInput.value.trim());
-                console.log('Solução Textual:', textSolutionTextarea.value.trim());
-                console.log('Arquivo:', filesToUpload[0]?.name || 'Nenhum arquivo');
-                
-                // Limpa todos os campos do formulário após o "envio"
-                filesToUpload = [];
-                themeInput.value = '';
-                subthemeInput.value = '';
-                documentTitleInput.value = '';
-                documentDescriptionTextarea.value = '';
-                documentKeywordsInput.value = '';
-                textSolutionTextarea.value = '';
-                updateFileList(); // Isso já chama checkFormValidity() no final
+        } catch (error) {
+            console.error('Falha no envio:', error);
+            uploadStatus.textContent = `Erro ao salvar: ${error.message}`;
+            uploadStatus.style.color = 'red';
+            uploadButton.disabled = false; // Reabilita o botão
+        }
+    });
+    
+    /**
+     * Verifica a validade dos campos para habilitar/desabilitar o botão de salvar.
+     */
+    function checkFormValidity() {
+        const titleFilled = documentTitleInput.value.trim() !== '';
+        const solutionTextFilled = textSolutionTextarea.value.trim() !== '';
+        const themeFilled = themeSelect.value !== '';
+        const subthemeFilled = subthemeSelect.value !== '';
 
-                uploadStatus.textContent = 'Documento salvo com sucesso!';
-                uploadStatus.style.color = 'green';
-                setTimeout(() => {
-                    uploadStatus.textContent = '';
-                    alert('Documento enviado e processado (simulação)!');
-                }, 2000);
-            }, 1500);
-        });
+        const isFormValid = titleFilled && solutionTextFilled && themeFilled && subthemeFilled;
+        
+        uploadButton.disabled = !isFormValid;
+        uploadButton.textContent = isFormValid ? 'Salvar Documento' : 'Preencha os campos';
+    }
 
-        // --- INICIALIZAÇÃO ---
-        checkFormValidity(); // Verifica o estado inicial do formulário
+    // --- EVENT LISTENERS E INICIALIZAÇÃO ---
+    themeSelect.addEventListener('change', popularMicroTemas);
+    // CORRIGIDO: O listener de 'input' agora escuta o container do formulário
+    formContainer.addEventListener('input', checkFormValidity);
+    
+    popularTemas(); // Carrega os temas iniciais assim que a página é carregada
 });

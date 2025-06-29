@@ -10,7 +10,7 @@
     <body class="upload-page">
         <div class="upload-container">
 
-            <a href="./dasboard.html" class="back-button" title="Voltar para o Painel">
+            <a href="./knowledge_library.html" class="back-button" title="Voltar para a Biblioteca">
                 <i class="bi bi-arrow-left-circle"></i> Voltar
             </a>
             
@@ -19,13 +19,17 @@
             <div class="form-document-details">
 
                 <div class="textfield">
-                    <label for="input-theme">Tema:</label>
-                    <input type="text" id="input-theme" placeholder="Ex: Cartão de Crédito" required>
+                    <label for="select-theme">Tema:</label>
+                    <select id="select-theme" required>
+                        <option value="">A carregar temas...</option>
+                    </select>
                 </div>
 
                 <div class="textfield">
-                    <label for="input-subtheme">Micro-tema:</label>
-                    <input type="text" id="input-subtheme" placeholder="Ex: Fatura" required>
+                    <label for="select-subtheme">Micro-tema:</label>
+                    <select id="select-subtheme" required disabled>
+                        <option value="">Escolha um tema primeiro...</option>
+                    </select>
                 </div>
 
                 <div class="textfield">
@@ -64,6 +68,6 @@
             <p class="upload-status" id="uploadStatus"></p>
         </div>
 
-        <script src="../js/upload.js"></script>
+       <script type="module" src="../js/upload.js"></script>
     </body>
 </html>

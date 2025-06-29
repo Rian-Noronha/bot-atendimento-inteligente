@@ -1,5 +1,28 @@
 const { Subcategoria, Categoria } = require('../models');
 
+// [NOVO E ESSENCIAL] - A função que estava a faltar
+/**
+ * @description Busca todas as subcategorias que pertencem a uma categoria específica.
+ * @param {string} req.params.categoriaId - O ID da categoria pai.
+ */
+exports.pegarSubcategoriasPorCategoria = async (req, res) => {
+    try {
+        const { categoriaId } = req.params;
+        const subcategorias = await Subcategoria.findAll({
+            where: {
+                categoria_id: categoriaId
+            }
+            // Não precisamos de 'include' aqui, pois o frontend só precisa do nome e ID da subcategoria
+        });
+        res.status(200).json(subcategorias);
+    } catch (error) {
+        res.status(500).json({ message: "Erro ao buscar subcategorias por categoria.", error: error.message });
+    }
+};
+
+
+// --- SUAS FUNÇÕES EXISTENTES (CONTINUAM IGUAIS) ---
+
 //listar todas as subcategorias conectando à sua categoria 
 exports.pegarTodasSubcategorias = async (req, res) => {
     try {
