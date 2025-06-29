@@ -2,42 +2,51 @@
 const { Documento, Subcategoria, Categoria, PalavraChave, sequelize } = require('../models');
 const axios = require('axios');
 
-// URL do nosso serviço de IA que gera os embeddings
-const AI_SERVICE_URL = 'http://localhost:8001/api/create-embedding';
+// URL do nosso serviço de IA que gera os embeddings.
+// CORRIGIDO: Apontando para a porta 8000, conforme o seu log do Uvicorn.
+const AI_SERVICE_URL = 'http://localhost:8000/api/create-embedding';
 
 /**
  * Função auxiliar para preparar o texto e obter o embedding do serviço de IA.
- * @param {object} docData - Os dados do documento (titulo, descricao, solucao, etc.).
- * @returns {Promise<Array<number>|null>} O vetor de embedding ou nulo em caso de erro.
+ * @param {object} docData - Os dados do documento (titulo, descricao, solucao).
+ * @returns {Promise<Array<number>>} O vetor de embedding.
+ * @throws {Error} Se a comunicação com a IA falhar ou a resposta for inválida.
  */
 async function getEmbeddingFromAIService(docData) {
     try {
-        // Constrói o texto otimizado para a geração do embedding
         const textoParaEmbedding = `Título: ${docData.titulo}\n\nDescrição: ${docData.descricao || ''}\n\nSolução: ${docData.solucao}`;
         
-        console.log("A solicitar embedding do serviço de IA...");
+        console.log(`[Node.js] A solicitar embedding para: "${textoParaEmbedding.substring(0, 70)}..."`);
         const responseIA = await axios.post(AI_SERVICE_URL, { text_to_embed: textoParaEmbedding });
         
         if (responseIA.data && responseIA.data.embedding) {
-            console.log("Embedding recebido com sucesso.");
+            console.log("[Node.js] Embedding recebido com sucesso do serviço de IA.");
             return responseIA.data.embedding;
         }
-        throw new Error("Resposta do serviço de IA não continha um embedding válido.");
+        
+        throw new Error("A resposta do serviço de IA não continha um embedding válido.");
+
     } catch (error) {
-        console.error("ERRO ao comunicar com o serviço de IA para obter o embedding:", error.message);
-        // Retornamos nulo para que o documento possa ser salvo mesmo se a IA falhar,
-        // mas logamos o erro. Uma estratégia de "tentar novamente" poderia ser implementada aqui.
-        return null; 
+        let errorMessage = "Falha na comunicação com o serviço de IA. ";
+        if (error.code === 'ECONNREFUSED') {
+            errorMessage += `Não foi possível conectar-se a ${AI_SERVICE_URL}. Verifique se o serviço de IA está a rodar.`;
+        } else if (error.response) {
+            // Se a API da IA retornou um erro (ex: status 500)
+            errorMessage += `A API da IA respondeu com o status ${error.response.status}: ${JSON.stringify(error.response.data)}`;
+        } else {
+            errorMessage += error.message;
+        }
+        console.error(`[Node.js] ${errorMessage}`);
+        throw new Error(errorMessage);
     }
 }
 
 
-// --- Funções de Leitura (Não interagem com a IA) ---
+// --- Funções de Leitura ---
 
 exports.pegarTodosDocumentos = async (req, res) => {
     try {
         const documentos = await Documento.findAll({
-            // Excluímos o campo de embedding para não enviar dados pesados na listagem
             attributes: { exclude: ['embedding'] }, 
             include: [
                 { model: Subcategoria, as: 'subcategoria', attributes: ['nome'], include: [{ model: Categoria, as: 'categoria', attributes: ['nome']}] },
@@ -72,7 +81,7 @@ exports.pegarDocumentoPorId = async (req, res) => {
 };
 
 
-// --- Funções de Escrita (INTERAGEM COM A IA) ---
+// --- Funções de Escrita ---
 
 exports.criarDocumento = async (req, res) => {
     const t = await sequelize.transaction();
@@ -84,16 +93,27 @@ exports.criarDocumento = async (req, res) => {
             return res.status(400).json({ message: "Título, solução e ID da subcategoria são obrigatórios." });
         }
 
-        // 1. Pede o embedding ao serviço de IA
         const embedding = await getEmbeddingFromAIService({ titulo, descricao, solucao });
 
-        // 2. Cria o documento no banco, incluindo o embedding recebido
-        const novoDocumento = await Documento.create({
-            titulo, descricao, solucao, subcategoria_id, ativo, urlArquivo, tipo_documento,
-            embedding: embedding // Salva o vetor aqui
-        }, { transaction: t });
+        // --- LOGS DE DEPURAÇÃO ADICIONADOS ---
+        console.log(`[Node.js] Tipo da variável 'embedding' recebida: ${typeof embedding}`);
+        console.log(`[Node.js] É um array? ${Array.isArray(embedding)}`);
+        if(Array.isArray(embedding)) {
+            console.log(`[Node.js] Comprimento do embedding: ${embedding.length}`);
+            console.log(`[Node.js] Primeiros 3 valores: [${embedding.slice(0,3).join(', ')}, ...]`);
+        }
+        // ------------------------------------
 
-        // Associa as palavras-chave
+        const dadosParaCriar = {
+            titulo, descricao, solucao, subcategoria_id, ativo, urlArquivo, tipo_documento,
+            embedding: embedding 
+        };
+        
+        console.log("[Node.js] A tentar criar o documento no banco de dados...");
+        const novoDocumento = await Documento.create(dadosParaCriar, { transaction: t });
+        
+        console.log("[Node.js] Documento criado com sucesso no banco.");
+
         if (palavrasChaveIds && palavrasChaveIds.length > 0) {
             await novoDocumento.addPalavrasChave(palavrasChaveIds, { transaction: t });
         }
@@ -109,8 +129,8 @@ exports.criarDocumento = async (req, res) => {
 
     } catch (error) {
         await t.rollback();
-        console.error("Erro detalhado ao criar documento:", error);
-        res.status(500).json({ message: "Erro ao criar documento.", error: error.message });
+        console.error("[Node.js] ERRO DETALHADO AO CRIAR DOCUMENTO:", error);
+        res.status(500).json({ message: `Erro ao criar documento: ${error.message}` });
     }
 };
 
@@ -119,24 +139,19 @@ exports.atualizarDocumento = async (req, res) => {
     try {
         const { id } = req.params;
         const { palavrasChaveIds, ...dadosDocumento } = req.body;
-
         const documento = await Documento.findByPk(id);
         if (!documento) {
             await t.rollback();
             return res.status(404).json({ message: 'Documento não encontrado.' });
         }
         
-        // 1. Pede um novo embedding com os dados atualizados
         const embedding = await getEmbeddingFromAIService({ 
             titulo: dadosDocumento.titulo || documento.titulo,
             descricao: dadosDocumento.descricao || documento.descricao,
             solucao: dadosDocumento.solucao || documento.solucao
         });
-
-        // Adiciona o novo embedding aos dados a serem atualizados
         dadosDocumento.embedding = embedding;
 
-        // 2. Atualiza o documento no banco
         await documento.update(dadosDocumento, { transaction: t });
 
         if (palavrasChaveIds && Array.isArray(palavrasChaveIds)) {
@@ -147,20 +162,19 @@ exports.atualizarDocumento = async (req, res) => {
         
         const documentoAtualizado = await Documento.findByPk(id, {
             attributes: { exclude: ['embedding'] },
-            include: [ { model: Subcategoria, as: 'subcategoria' }, { model: PalavraChave, as: 'palavrasChave' }]
+            include: [ 
+                { model: Subcategoria, as: 'subcategoria' }, 
+                { model: PalavraChave, as: 'palavrasChave' }
+            ]
         });
-
         res.status(200).json(documentoAtualizado);
-
     } catch (error) {
         await t.rollback();
-        res.status(500).json({ message: "Erro ao atualizar documento.", error: error.message });
+        res.status(500).json({ message: `Erro ao atualizar documento: ${error.message}` });
     }
 };
 
 exports.deletarDocumento = async (req, res) => {
-    // A lógica de exclusão não precisa de chamar a IA.
-    // O registo é simplesmente apagado do banco de dados.
     try {
         const { id } = req.params;
         const deleted = await Documento.destroy({ where: { id: id } });
