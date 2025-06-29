@@ -28,3 +28,7 @@ ipykernel
 
 # Para exibição de imagens no notebook
 ipython
+
+#Para conectar ao PostgreSQL a partir do Python
+sqlalchemy
+psycopg2-binary
