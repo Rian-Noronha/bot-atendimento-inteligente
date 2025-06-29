@@ -3,7 +3,7 @@ const router = express.Router();
 const usuarioController = require('../controllers/usuarioController');
 
 // Importa o nosso novo middleware de autenticação
-const { protect } = require('../middleware/authMiddleware');
+const { protect } = require('../middlewares/authMiddleware');
 
 // --- ROTAS PROTEGIDAS ---
 // O middleware 'protect' é adicionado antes da função do controller.
