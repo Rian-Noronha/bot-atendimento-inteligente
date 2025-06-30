@@ -12,12 +12,10 @@ exports.criarFeedback = async (req, res) => {
             return res.status(400).json({ message: 'Os campos "util" (true/false) e "resposta_id" são obrigatórios.' });
         }
 
-        // CORREÇÃO: Vamos buscar a resposta e suas associações necessárias
         const resposta = await ChatResposta.findByPk(resposta_id, {
             include: [{
                 model: ChatConsulta,
                 as: 'consulta',
-                // Incluindo a Subcategoria da Consulta original, que é o que precisamos!
                 include: [{
                     model: Subcategoria,
                     as: 'subcategoria'
