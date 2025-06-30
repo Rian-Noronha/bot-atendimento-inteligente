@@ -1,5 +1,3 @@
-// js/services/apiAssuntoPendenteService.js
-
 const API_URL = 'http://localhost:3000/api';
 
 /**
@@ -27,11 +25,7 @@ async function handleResponseError(response) {
 }
 
 export const apiAssuntoPendenteService = {
-    /**
-     * Busca todos os assuntos com o status 'pendente' no backend.
-     */
     async pegarTodosPendentes() {
-        // A rota deve corresponder à sua rota de assuntos pendentes no backend
         const response = await fetch(`${API_URL}/assuntos-pendentes`, {
             method: 'GET',
             headers: getAuthHeaders()
