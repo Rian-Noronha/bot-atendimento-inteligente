@@ -1,22 +1,16 @@
-// Importa o serviço de login para comunicar com o backend
 import { apiLoginService } from './services/apiLoginService.js';
 
 document.addEventListener('DOMContentLoaded', () => {
-    // --- Seletores dos Elementos do Formulário ---
     const loginForm = document.getElementById('login-form');
     const emailInput = document.getElementById('email');
-    // CORREÇÃO: Adicionada a declaração da variável para o campo da senha
     const passwordInput = document.getElementById('password'); 
     const loginStatusMessage = document.getElementById('login-status-message');
 
     
     loginForm.addEventListener('submit', async (event) => {
-        event.preventDefault(); // Impede o envio padrão do formulário
-
+        event.preventDefault(); 
         const email = emailInput.value.trim();
-        // Agora 'passwordInput' existe e o código funcionará
         const password = passwordInput.value.trim();
-
         if (email === '' || password === '') {
             alert('Por favor, preencha todos os campos.');
             return;
