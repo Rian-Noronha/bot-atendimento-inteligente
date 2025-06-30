@@ -1,5 +1,3 @@
-// js/services/apiUsuarioService.js
-
 const API_URL = 'http://localhost:3000/api';
 
 /**
@@ -26,12 +24,11 @@ function getAuthHeaders() {
  */
 async function handleResponseError(response) {
     // Se a resposta for 401, o token pode ter expirado ou ser inválido.
-    // Uma boa prática é redirecionar o utilizador para a página de login.
     if (response.status === 401) {
-        // Remove os dados de autenticação inválidos
+        // Remover os dados de autenticação inválidos
         localStorage.removeItem('authToken');
         localStorage.removeItem('loggedInUser');
-        // Redireciona para o login com uma mensagem
+        // Redirecionar para o login com uma mensagem
         alert('A sua sessão expirou. Por favor, inicie sessão novamente.');
         window.location.href = '/index.html'; 
     }
@@ -43,10 +40,8 @@ async function handleResponseError(response) {
 
 
 export const apiUsuarioService = {
-    
     /**
-     * Cria um novo utilizador. Esta rota geralmente é pública, mas enviar o token
-     * não causa problemas se a rota não o exigir.
+     * Cria um novo utilizador.
      */
     async criar(dados) {
         const response = await fetch(`${API_URL}/usuarios`, {
@@ -100,8 +95,6 @@ export const apiUsuarioService = {
             method: 'DELETE',
             headers: getAuthHeaders()
         });
-
-        // DELETE geralmente retorna 204 No Content, que não tem corpo JSON
         if (response.status !== 204 && !response.ok) {
             await handleResponseError(response);
         }
