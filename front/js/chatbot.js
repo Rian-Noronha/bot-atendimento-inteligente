@@ -1,11 +1,7 @@
-// js/chatbot.js
-
-// Importa os serviços de API necessários
 import { apiChatService } from './services/apiChatService.js';
 import { apiCategoriaService } from './services/apiCategoriaService.js';
 
 document.addEventListener('DOMContentLoaded', () => {
-    // --- Seletores dos Elementos ---
     const themeSelect = document.getElementById('select-theme');
     const subthemeSelect = document.getElementById('select-subtheme');
     const inputPergunta = document.getElementById('input-pergunta');
@@ -16,14 +12,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnFeedbackNao = document.getElementById('btn-feedback-nao');
     const feedbackStatus = document.getElementById('feedback-status');
 
-    // --- Variáveis de Estado da Sessão ---
     let currentSessaoId = null;
-    let currentRespostaId = null; // A única coisa que precisamos de guardar para o feedback
+    let currentRespostaId = null; // guardar para o feedback
 
-    // --- Lógica de Inicialização ---
     async function inicializarChat() {
-        // A sua lógica de timeout e sessão simultânea pode ser mantida aqui
-        
         const token = localStorage.getItem('authToken');
         if (!token) {
             alert("A sua sessão não foi encontrada. Por favor, inicie sessão.");
@@ -54,7 +46,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function handleThemeChange() {
         const categoriaId = themeSelect.value;
-        subthemeSelect.innerHTML = '<option value="" disabled selected>A carregar...</option>';
+        subthemeSelect.innerHTML = '<option value="" disabled selected>Buscando...</option>';
         subthemeSelect.disabled = true;
         inputPergunta.disabled = true;
 
@@ -74,7 +66,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- LÓGICA DE PERGUNTA E RESPOSTA (SIMPLIFICADA) ---
     async function handleAsk() {
         const pergunta = inputPergunta.value.trim();
         const subcategoria_id = subthemeSelect.value;
@@ -84,14 +75,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         askButton.disabled = true;
-        answerArea.value = 'A pensar...';
+        answerArea.value = 'Buscando...';
         feedbackSection.style.display = 'none';
         feedbackStatus.textContent = '';
         btnFeedbackSim.disabled = false;
         btnFeedbackNao.disabled = false;
         
         try {
-            // AGORA, FAZEMOS APENAS UMA CHAMADA À API!
             const dadosConsulta = { pergunta, sessao_id: currentSessaoId, subcategoria_id };
             const respostaCompleta = await apiChatService.criarConsultaEObterResposta(dadosConsulta);
 
@@ -108,7 +98,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- Lógica de Feedback (sem alterações) ---
+    
     async function handleFeedback(foiUtil) {
         if (!currentRespostaId) return;
         feedbackStatus.textContent = 'A enviar feedback...';
