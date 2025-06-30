@@ -1,9 +1,6 @@
 // Importamos os models, o sequelize e o axios para fazer chamadas HTTP
 const { Documento, Subcategoria, Categoria, PalavraChave, sequelize } = require('../models');
 const axios = require('axios');
-
-// URL do nosso serviço de IA que gera os embeddings.
-// CORRIGIDO: Apontando para a porta 8000, conforme o seu log do Uvicorn.
 const AI_SERVICE_URL = 'http://localhost:8000/api/create-embedding';
 
 /**
