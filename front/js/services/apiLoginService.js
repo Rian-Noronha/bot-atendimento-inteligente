@@ -1,11 +1,4 @@
-// js/services/apiLoginService.js
-
-// A URL base da sua API
 const API_URL = 'http://localhost:3000/api';
-
-/**
- * Contém todas as funções relacionadas à autenticação.
- */
 export const apiLoginService = {
     /**
      * Envia as credenciais para o backend para tentar fazer o login.
@@ -27,7 +20,6 @@ export const apiLoginService = {
         if (!response.ok) {
             // Tenta ler a mensagem de erro do corpo da resposta da API
             const errorData = await response.json().catch(() => ({}));
-            // Lança um erro com a mensagem do servidor ou uma mensagem padrão
             throw new Error(errorData.message || 'Falha na autenticação.');
         }
 
