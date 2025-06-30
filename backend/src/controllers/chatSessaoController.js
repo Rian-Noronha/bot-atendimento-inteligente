@@ -1,27 +1,22 @@
+// controllers/chatSessaoController.js
+
 const { ChatSessao, Usuario } = require('../models');
 
 /**
- * Inicia uma nova sessão de chat para um usuário específico.
- * Para desenvolvimento, o ID do usuário é passado no corpo da requisição.
+ * Inicia uma nova sessão de chat para o utilizador autenticado.
+ * O ID do utilizador é obtido de forma segura a partir do token JWT.
  */
 exports.iniciarSessao = async (req, res) => {
     try {
-        // Sem auth, pegar o ID do usuário diretamente do corpo da requisição.
-        const { usuario_id } = req.body;
+        // CORREÇÃO: Em vez de pegar do req.body, pegamos o ID do utilizador
+        // que foi validado pelo middleware 'protect' e anexado ao objeto 'req'.
+        const usuario_id = req.usuario.id;
 
-        if (!usuario_id) {
-            return res.status(400).json({ message: 'O campo usuario_id é obrigatório.' });
-        }
-
-        // Verifica se o usuário existe antes de criar a sessão
-        const usuario = await Usuario.findByPk(usuario_id);
-        if (!usuario) {
-            return res.status(404).json({ message: 'Usuário não encontrado para iniciar a sessão.' });
-        }
+        // A verificação de existência do utilizador já não é estritamente necessária aqui,
+        // pois o middleware 'protect' já garante que o utilizador do token existe.
 
         const novaSessao = await ChatSessao.create({
             usuario_id: usuario_id
-            // O campo registro_inicio é definido por padrão pelo banco de dados
         });
 
         res.status(201).json({ 
@@ -30,30 +25,26 @@ exports.iniciarSessao = async (req, res) => {
         });
 
     } catch (error) {
+        console.error("Erro ao iniciar sessão de chat:", error);
         res.status(500).json({ message: "Erro ao iniciar sessão de chat.", error: error.message });
     }
 };
 
 
-
-
 /**
- * Encerra uma sessão de chat, registrando a data/hora de término.
- * VERSÃO DE DEBUG: Primeiro busca, depois atualiza.
+ * Encerra uma sessão de chat, registando a data/hora de término.
+ * A sua lógica aqui está perfeita e pode ser mantida.
  */
 exports.encerrarSessao = async (req, res) => {
     try {
         const { id } = req.params;
-        console.log(`--- TENTANDO ENCERRAR SESSÃO ID: ${id} ---`);
-
-        // Passo 1: Tenta encontrar a sessão pelo seu ID (Primary Key)
+        
         const sessao = await ChatSessao.findByPk(id);
 
-        // Passo 2: Verifica se a sessão foi encontrada
         if (sessao) {
-            console.log(`Sessão ID ${id} encontrada! Atualizando...`);
+            // Seria uma boa prática de segurança extra verificar se o utilizador que está a tentar
+            // encerrar a sessão é o mesmo que a criou (ex: if (sessao.usuario_id !== req.usuario.id) ... )
             
-            // Passo 3: Se encontrou, atualiza o campo 'registro_fim' e salva
             sessao.registro_fim = new Date();
             await sessao.save();
 
@@ -62,14 +53,10 @@ exports.encerrarSessao = async (req, res) => {
                 sessao: sessao
             });
         } else {
-            // Se findByPk retornou null, a sessão realmente não foi encontrada no banco
-            console.log(`AVISO: Sessão ID ${id} não encontrada no banco de dados.`);
             res.status(404).json({ message: 'Sessão de chat não encontrada.' });
         }
     } catch (error) {
-        console.error("ERRO DETALHADO:", error);
+        console.error("ERRO DETALHADO AO ENCERRAR SESSÃO:", error);
         res.status(500).json({ message: "Erro ao encerrar sessão de chat.", error: error.message });
     }
 };
-
-
