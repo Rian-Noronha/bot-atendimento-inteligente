@@ -1,10 +1,4 @@
-// js/services/apiChatService.js
-
 const API_URL = 'http://localhost:3000/api';
-
-/**
- * Função auxiliar para obter os cabeçalhos de autenticação.
- */
 function getAuthHeaders() {
     const token = localStorage.getItem('authToken');
     const headers = {
