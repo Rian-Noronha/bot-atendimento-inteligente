@@ -1,37 +1,48 @@
-// Importa os models para podermos consultar o banco de dados
+// Importa os models
 const { Usuario, Perfil } = require('../models');
 
-/**
- * Middleware para verificar se o usuário logado tem o perfil de 'Admin'.
- * DEVE ser usado DEPOIS do middleware 'protect'.
- */
 const isAdmin = async (req, res, next) => {
+    // log depuração
+    console.log('\n--- EXECUTANDO MIDDLEWARE ISADMIN ---');
+    
     try {
-        // 1. O middleware 'protect' já verificou o token e adicionou 'req.user'.
-        //    'req.user' contém os dados do payload do token, como o ID do usuário.
+        if (!req.user || !req.user.id) {
+            console.error('ERRO: Middleware "protect" não adicionou req.user.id corretamente.');
+            return res.status(401).json({ message: 'Falha na autenticação, dados do usuário não encontrados.' });
+        }
+        
         const idDoUsuarioLogado = req.user.id;
+        console.log(`Buscando permissões para o usuário com ID: ${idDoUsuarioLogado}`);
 
-        // 2. Buscamos o usuário no banco de dados para obter suas informações completas,
-        //    principalmente seu perfil associado.
         const usuario = await Usuario.findByPk(idDoUsuarioLogado, {
             include: [{
                 model: Perfil,
                 as: 'perfil',
-                attributes: ['nome'] // Só precisamos do nome do perfil para a verificação
+                attributes: ['nome']
             }]
         });
+        
+        console.log('Resultado da busca no banco:', JSON.stringify(usuario, null, 2));
 
-        // 3. Verificamos se o usuário existe e se o nome do seu perfil é 'Admin'.
-        //    É importante usar .toLowerCase() para evitar erros com 'Admin', 'admin' ou 'ADMIN'.
-        if (usuario && usuario.perfil && usuario.perfil.nome.toLowerCase() === 'administrador') {
-            // 4. Se for 'Admin', permite que a requisição prossiga para o controller.
-            next();
+        if (usuario && usuario.perfil && usuario.perfil.nome) {
+            console.log(`Perfil encontrado: '${usuario.perfil.nome}'. Verificando se é 'administrador'.`);
+            if (usuario.perfil.nome.toLowerCase() === 'administrador') {
+                console.log('VERIFICAÇÃO OK: Usuário é administrador. Acesso permitido.');
+                next(); // Permite a passagem
+            } else {
+                console.log('ACESSO NEGADO: Usuário não é administrador.');
+                return res.status(403).json({ message: 'Acesso negado. Rota exclusiva para administradores.' });
+            }
         } else {
-            // 5. Se não for 'Admin', retorna um erro 403 Forbidden (Acesso Proibido).
-            return res.status(403).json({ message: 'Acesso negado. Rota exclusiva para administradores.' });
+            console.log('ACESSO NEGADO: Usuário ou perfil não encontrado no resultado da busca.');
+            return res.status(403).json({ message: 'Acesso negado. Perfil de usuário não pôde ser verificado.' });
         }
 
     } catch (error) {
+        // ESTA É A PARTE MAIS IMPORTANTE
+        console.error('\n!!!!!!!! ERRO DETALHADO CAPTURADO NO ISADMIN !!!!!!!!');
+        console.error(error); // Isso vai imprimir o erro completo do Sequelize!
+        
         res.status(500).json({ message: "Erro interno ao verificar permissões de administrador", error: error.message });
     }
 };

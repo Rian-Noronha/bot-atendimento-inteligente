@@ -16,11 +16,16 @@ exports.protect = async (req, res, next) => {
 
             // 4. Se o token for válido, procura o utilizador na base de dados pelo ID contido no token
             // Anexa o objeto do utilizador (sem a senha) ao objeto 'req'
-            req.usuario = await Usuario.findByPk(decoded.id, {
+            
+            // --- MUDANÇA AQUI ---
+            // Padronizado de 'req.usuario' para 'req.user'
+            req.user = await Usuario.findByPk(decoded.id, {
                 attributes: { exclude: ['senha_hash'] }
             });
             
-            if (!req.usuario) {
+            // --- MUDANÇA AQUI ---
+            // Verificação também usa 'req.user' agora
+            if (!req.user) {
                  return res.status(401).json({ message: 'Não autorizado, utilizador do token não encontrado.' });
             }
 
@@ -42,8 +47,9 @@ exports.protect = async (req, res, next) => {
 // Opcional: Middleware para restringir o acesso a certos perfis (ex: só para administradores)
 exports.authorize = (...perfis) => {
     return (req, res, next) => {
-        // Este middleware deve ser usado DEPOIS do 'protect'
-        if (!req.usuario || !perfis.includes(req.usuario.perfil_id)) {
+        // --- MUDANÇA AQUI ---
+        // Este middleware deve ser usado DEPOIS do 'protect' e também usa 'req.user'
+        if (!req.user || !perfis.includes(req.user.perfil_id)) {
             return res.status(403).json({ message: 'Acesso negado. Você não tem permissão para realizar esta ação.' });
         }
         next();
