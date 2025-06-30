@@ -15,10 +15,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnSimCadastrar = document.getElementById('btn-sim-cadastrar');
     const btnNaoDescartar = document.getElementById('btn-nao-descartar');
 
-    // --- LÓGICA DE TIMEOUT DE SESSÃO (5 MINUTOS) ---
-
     const TIMEOUT_DURATION = 5 * 60 * 1000;
-    let timeoutInterval; // Variável para guardar nosso "vigia".
+    let timeoutInterval; 
 
     /**
      * Reseta o contador de inatividade.
