@@ -1,6 +1,4 @@
 const { Subcategoria, Categoria } = require('../models');
-
-// [NOVO E ESSENCIAL] - A função que estava a faltar
 /**
  * @description Busca todas as subcategorias que pertencem a uma categoria específica.
  * @param {string} req.params.categoriaId - O ID da categoria pai.
@@ -12,7 +10,6 @@ exports.pegarSubcategoriasPorCategoria = async (req, res) => {
             where: {
                 categoria_id: categoriaId
             }
-            // Não precisamos de 'include' aqui, pois o frontend só precisa do nome e ID da subcategoria
         });
         res.status(200).json(subcategorias);
     } catch (error) {
@@ -20,8 +17,6 @@ exports.pegarSubcategoriasPorCategoria = async (req, res) => {
     }
 };
 
-
-// --- SUAS FUNÇÕES EXISTENTES (CONTINUAM IGUAIS) ---
 
 //listar todas as subcategorias conectando à sua categoria 
 exports.pegarTodasSubcategorias = async (req, res) => {
@@ -119,10 +114,6 @@ exports.deletarSubcategoria = async (req, res) => {
         res.status(500).json({ message: "Erro ao deletar subcategoria.", error: error.message });
     }
 };
-
-
-
-//!nome || !descricao || !categoria_id
 
 function validarCampos(nome, descricao, categoria_id){
     let camposValidados = true;
