@@ -1,4 +1,3 @@
-// Importa os models
 const { Usuario, Perfil } = require('../models');
 
 const isAdmin = async (req, res, next) => {
@@ -39,9 +38,8 @@ const isAdmin = async (req, res, next) => {
         }
 
     } catch (error) {
-        // ESTA É A PARTE MAIS IMPORTANTE
         console.error('\n!!!!!!!! ERRO DETALHADO CAPTURADO NO ISADMIN !!!!!!!!');
-        console.error(error); // Isso vai imprimir o erro completo do Sequelize!
+        console.error(error);
         
         res.status(500).json({ message: "Erro interno ao verificar permissões de administrador", error: error.message });
     }
