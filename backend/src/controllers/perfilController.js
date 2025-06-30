@@ -27,11 +27,7 @@ const { Perfil } = require('../models');
     }
 
     exports.criarPerfil = async (req, res) => {
-        /*
-        if (!validarAcessoAdmin(req.user.perfil)) {
-            return res.status(403).json({ message: 'Acesso negado. Apenas administradores podem criar perfis.' });
-        }*/
-
+    
         try {
             const { nome, descricao } = req.body;
             if (!validarCampos(nome, descricao)) {
@@ -46,10 +42,7 @@ const { Perfil } = require('../models');
     };
 
     exports.atualizarPerfil = async (req, res) => { 
-        /*
-        if (!validarAcessoAdmin(req.user.perfil)) {
-            return res.status(403).json({ message: 'Acesso negado. Apenas administradores podem editar perfis.' });
-        }*/
+       
 
         try {
             const { id } = req.params;
@@ -71,11 +64,7 @@ const { Perfil } = require('../models');
     };
 
     exports.deletarPerfil = async (req, res) => {
-        /*
-        if (!validarAcessoAdmin(req.user.perfil)) {
-            return res.status(403).json({ message: 'Acesso negado. Apenas administradores podem deletar perfis.' });
-        }*/
-
+        
         try {
             const { id } = req.params;
             const deletado = await Perfil.destroy({
@@ -103,14 +92,4 @@ const { Perfil } = require('../models');
         }
 
         return camposValidados;
-    }
-
-    function validarAcessoAdmin(perfil) {
-        let acessoAdminValidado = true;
-
-        if (perfil !== 'Administrador') {
-            acessoAdminValidado = false;
-        }
-
-        return acessoAdminValidado;
     }
