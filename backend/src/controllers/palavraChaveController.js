@@ -63,7 +63,7 @@ exports.criarPalavraChave = async (req, res) => {
 };
 
 /**
- * @description [NOVO E ESSENCIAL] Recebe um array de palavras, encontra as que já existem,
+ * @description Recebe um array de palavras, encontra as que já existem,
  * cria as que são novas e retorna a lista completa.
  * @body { "palavras": ["fraude", "compra", "online"] }
  */
@@ -86,7 +86,7 @@ exports.encontrarOuCriarLote = async (req, res) => {
         const results = await Promise.all(promises);
 
         // O resultado de findOrCreate é um array [instance, created].
-        // Nós queremos apenas a instância do modelo (o primeiro item).
+        // Pegar apenas a instância do modelo (o primeiro item).
         const palavrasChaveSalvas = results.map(result => result[0]);
 
         // Retorna a lista de objetos PalavraChave com seus IDs.
