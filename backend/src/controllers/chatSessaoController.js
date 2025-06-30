@@ -1,16 +1,7 @@
-// controllers/chatSessaoController.js
-
 const { ChatSessao, Usuario } = require('../models');
-
-/**
- * Inicia uma nova sessão de chat para o utilizador autenticado.
- * O ID do utilizador é obtido de forma segura a partir do token JWT.
- */
 exports.iniciarSessao = async (req, res) => {
     try {
-        // CORREÇÃO: Em vez de pegar do req.body, pegamos o ID do utilizador
-        // que foi validado pelo middleware 'protect' e anexado ao objeto 'req'.
-        const usuario_id = req.usuario.id;
+        const usuario_id = req.user.id;
 
         // A verificação de existência do utilizador já não é estritamente necessária aqui,
         // pois o middleware 'protect' já garante que o utilizador do token existe.
@@ -30,11 +21,6 @@ exports.iniciarSessao = async (req, res) => {
     }
 };
 
-
-/**
- * Encerra uma sessão de chat, registando a data/hora de término.
- * A sua lógica aqui está perfeita e pode ser mantida.
- */
 exports.encerrarSessao = async (req, res) => {
     try {
         const { id } = req.params;
@@ -42,9 +28,6 @@ exports.encerrarSessao = async (req, res) => {
         const sessao = await ChatSessao.findByPk(id);
 
         if (sessao) {
-            // Seria uma boa prática de segurança extra verificar se o utilizador que está a tentar
-            // encerrar a sessão é o mesmo que a criou (ex: if (sessao.usuario_id !== req.usuario.id) ... )
-            
             sessao.registro_fim = new Date();
             await sessao.save();
 
