@@ -8,7 +8,7 @@ module.exports = {
       {
           nome: 'Bloqueio',
           descricao: 'Subcategoria relacionada à categoria Cartão.',
-          categoria_id: 2,
+          categoria_id: 1,
           createdAt: new Date(),
           updatedAt: new Date()
       },
@@ -16,7 +16,7 @@ module.exports = {
       {
           nome: 'Empréstimo',
           descricao: 'Subcategoria relacionada à categoria Cartão.',
-          categoria_id: 2,
+          categoria_id: 1,
           createdAt: new Date(),
           updatedAt: new Date()
       },
@@ -24,7 +24,7 @@ module.exports = {
       {
           nome: 'Data Base',
           descricao: 'Subcategoria relacionada à categoria Cartão.',
-          categoria_id: 2,
+          categoria_id: 1,
           createdAt: new Date(),
           updatedAt: new Date()
       },
@@ -32,7 +32,7 @@ module.exports = {
       {
         nome: 'Chamados',
         descricao: 'Subcategoria relacionada à categoria SAC.',
-        categoria_id: 3,
+        categoria_id: 2,
         createdAt: new Date(),
         updatedAt: new Date()
       }

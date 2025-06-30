@@ -16,6 +16,8 @@ router.get('/usuarios', protect, usuarioController.pegarTodosUsuarios);
 // GET /api/usuarios/:id - Protegido
 router.get('/usuarios/:id', protect, usuarioController.pegarUsuarioPorId);
 
+router.post('/usuarios', protect, usuarioController.criarUsuario);
+
 // PUT /api/usuarios/:id - Protegido
 router.put('/usuarios/:id', protect, usuarioController.atualizarUsuario);
 
