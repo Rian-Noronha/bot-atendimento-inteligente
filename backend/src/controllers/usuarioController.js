@@ -1,13 +1,8 @@
-// Importa os models necessários
 const { Usuario, Perfil } = require('../models');
-
-/**
- * Lista todos os usuários e inclui a informação do seu perfil.
- */
 exports.pegarTodosUsuarios = async (req, res) => {
     try {
         const usuarios = await Usuario.findAll({
-            attributes: { exclude: ['senha_hash'] }, // Nunca expor o hash da senha
+            attributes: { exclude: ['senha_hash'] },
             include: [{
                 model: Perfil,
                 as: 'perfil',
@@ -21,9 +16,6 @@ exports.pegarTodosUsuarios = async (req, res) => {
     }
 };
 
-/**
- * Busca um único usuário pelo ID, também incluindo o perfil.
- */
 exports.pegarUsuarioPorId = async (req, res) => {
     try {
         const { id } = req.params;
@@ -42,9 +34,7 @@ exports.pegarUsuarioPorId = async (req, res) => {
     }
 };
 
-/**
- * Cria um novo usuário. A senha é criptografada automaticamente pelo hook do model.
- */
+
 exports.criarUsuario = async (req, res) => {
     try {
         const { nome, email, senha, perfil_id } = req.body;
@@ -52,8 +42,8 @@ exports.criarUsuario = async (req, res) => {
             return res.status(400).json({ message: "Todos os campos (nome, email, senha, perfil_id) são obrigatórios." });
         }
 
-        // AGORA, O PROCESSO É MAIS SIMPLES:
-        // 1. Passamos a senha em texto plano para o campo 'senha_hash'.
+        
+        // 1. Passar a senha em texto plano para o campo 'senha_hash'.
         // 2. O hook 'beforeCreate' no model do Usuario irá intercetar este valor,
         //    encriptá-lo e salvá-lo corretamente na base de dados.
         const novoUsuario = await Usuario.create({
@@ -64,12 +54,11 @@ exports.criarUsuario = async (req, res) => {
             ativo: true
         });
 
-        // Retorna o usuário criado (sem a senha, claro)
+        // Retorna o usuário criado
         const { senha_hash: _, ...usuarioSemSenha } = novoUsuario.toJSON();
         res.status(201).json(usuarioSemSenha);
 
     } catch (error) {
-        // Trata erros de validação, como o de email duplicado
         if (error.name === 'SequelizeUniqueConstraintError') {
             return res.status(409).json({ message: 'Este email já está em uso.' });
         }
@@ -77,13 +66,10 @@ exports.criarUsuario = async (req, res) => {
     }
 };
 
-/**
- * Atualiza um usuário existente.
- */
+
 exports.atualizarUsuario = async (req, res) => {
     try {
         const { id } = req.params;
-        // Nota: Esta função não atualiza a senha. Seria necessário um tratamento adicional.
         const { nome, email, perfil_id, ativo } = req.body;
 
         const dadosParaAtualizar = { nome, email, perfil_id, ativo };
@@ -106,9 +92,7 @@ exports.atualizarUsuario = async (req, res) => {
     }
 };
 
-/**
- * Deleta um usuário.
- */
+
 exports.deletarUsuario = async (req, res) => {
     try {
         const { id } = req.params;
