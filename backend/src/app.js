@@ -37,7 +37,7 @@ app.use('/api', chatConsultaRoutes);
 app.use('/api', chatRespostaRoutes);
 app.use('/api', assuntoPendenteRoutes);
 app.use('/api', feedbackRoutes);
-app.use('/api', authRoutes);
+app.use('/api/auth', authRoutes);
 
 
 module.exports = app;

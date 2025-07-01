@@ -1,46 +1,30 @@
-// Importa os models e as bibliotecas necessárias
-const { Usuario, Perfil } = require('../models');
-const bcrypt = require('bcrypt');
+const { Usuario, Perfil, sequelize } = require('../models');
+const { Op } = require('sequelize');
+const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
+const { enviarEmailRecuperacao } = require('../services/emailService');
 
 /**
- * @description Realiza o login do utilizador, validando as suas credenciais.
- * Se as credenciais forem válidas, retorna um token JWT.
+ * @description Realiza o login do utilizador.
  */
 exports.login = async (req, res) => {
     try {
         const { email, senha } = req.body;
-
-        // 1. Verifica se o email e a senha foram fornecidos
         if (!email || !senha) {
             return res.status(400).json({ message: "Email e senha são obrigatórios." });
         }
-
-        // 2. Procura o utilizador na base de dados pelo seu email
-        // Incluímos o 'perfil' para adicioná-lo às informações do token
         const usuario = await Usuario.findOne({
             where: { email },
             include: [{ model: Perfil, as: 'perfil' }]
         });
-
-        // 3. Se o utilizador não for encontrado, retorna um erro de credenciais inválidas
-        if (!usuario) {
-            return res.status(401).json({ message: "Credenciais inválidas." }); // Mensagem genérica por segurança
+        if (!usuario || !usuario.ativo) {
+            return res.status(401).json({ message: "Credenciais inválidas ou usuário inativo." });
         }
-        
-        // 4. Se o utilizador estiver inativo, nega o acesso
-        if (!usuario.ativo) {
-            return res.status(403).json({ message: "Este utilizador está inativo." });
-        }
-
-        // 5. Compara a senha fornecida com o hash guardado na base de dados
         const senhaValida = await bcrypt.compare(senha, usuario.senha_hash);
         if (!senhaValida) {
-            return res.status(401).json({ message: "Credenciais inválidas." }); // Mesma mensagem genérica
+            return res.status(401).json({ message: "Credenciais inválidas." });
         }
-
-        // 6. Se a senha for válida, gera um token JWT
-        // O "payload" do token contém informações úteis e não sensíveis sobre o utilizador
         const payload = {
             id: usuario.id,
             nome: usuario.nome,
@@ -50,21 +34,67 @@ exports.login = async (req, res) => {
                 nome: usuario.perfil.nome
             }
         };
-
-        // O token é assinado com uma chave secreta que deve estar nas suas variáveis de ambiente
-        const token = jwt.sign(
-            payload,
-            process.env.JWT_SECRET, // Chave secreta
-            { expiresIn: '8h' } // Define um tempo de expiração para o token (ex: 8 horas)
-        );
-        
-        // 7. Retorna o token e os dados do utilizador para o frontend
-        res.status(200).json({
-            token,
-            usuario: payload // Envia os dados do utilizador para facilitar o trabalho do frontend
-        });
-
+        const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '8h' });
+        res.status(200).json({ token, usuario: payload });
     } catch (error) {
         res.status(500).json({ message: "Erro interno no servidor durante o login.", error: error.message });
+    }
+};
+
+// --- FUNÇÃO QUE ESTAVA FALTANDO ---
+/**
+ * @description Etapa 1 do fluxo de recuperação: Envia o e-mail com o token.
+ */
+exports.esqueciSenha = async (req, res) => {
+    try {
+        const { email } = req.body;
+        const usuario = await Usuario.findOne({ where: { email } });
+
+        if (!usuario) {
+            // Por segurança, não informamos se o e-mail existe ou não.
+            return res.status(200).json({ message: 'Se um usuário com este e-mail existir, um link de recuperação será enviado.' });
+        }
+
+        const resetToken = crypto.randomBytes(20).toString('hex');
+        usuario.reset_password_expires = sequelize.literal("NOW() + INTERVAL '1 hour'");
+        usuario.reset_password_token = resetToken;
+        await usuario.save();
+
+        await enviarEmailRecuperacao(usuario.email, resetToken);
+
+        res.status(200).json({ message: 'Se um usuário com este e-mail existir, um link de recuperação será enviado.' });
+
+    } catch (error) {
+        console.error("Erro no processo de 'esqueci a senha':", error);
+        res.status(500).json({ message: 'Erro no servidor ao processar a solicitação.' });
+    }
+};
+
+/**
+ * @description Etapa 2 do fluxo de recuperação: Redefine a senha.
+ */
+exports.redefinirSenha = async (req, res) => {
+    try {
+        const { token, senha } = req.body;
+        if (!token || !senha) {
+            return res.status(400).json({ message: 'O token e a nova senha são obrigatórios.' });
+        }
+        const usuario = await Usuario.findOne({
+            where: {
+                reset_password_token: token,
+                reset_password_expires: { [Op.gt]: new Date() }
+            }
+        });
+        if (!usuario) {
+            return res.status(400).json({ message: 'Token de recuperação inválido ou já expirado.' });
+        }
+        usuario.senha_hash = senha;
+        usuario.reset_password_token = null;
+        usuario.reset_password_expires = null;
+        await usuario.save();
+        res.status(200).json({ message: 'Sua senha foi redefinida com sucesso!' });
+    } catch (error) {
+        console.error("Erro no processo de 'redefinir a senha':", error);
+        res.status(500).json({ message: 'Erro no servidor ao redefinir a senha.' });
     }
 };
