@@ -1,12 +1,8 @@
-// js/upload.js
-
-// Importando os serviços de API para comunicação com o backend
 import { apiCategoriaService } from './services/apiCategoriaService.js';
 import { apiPalavraChaveService } from './services/apiPalavraChaveService.js';
 import { apiKnowledgeLibraryService } from './services/apiKnowledgeLibraryService.js';
 
 document.addEventListener('DOMContentLoaded', () => {
-    // --- SELEÇÃO DOS ELEMENTOS DO FORMULÁRIO ---
     const themeSelect = document.getElementById('select-theme');
     const subthemeSelect = document.getElementById('select-subtheme');
     const uploadButton = document.getElementById('uploadButton');
@@ -15,11 +11,72 @@ document.addEventListener('DOMContentLoaded', () => {
     const documentDescriptionTextarea = document.getElementById('document-description');
     const documentKeywordsInput = document.getElementById('document-keywords');
     const textSolutionTextarea = document.getElementById('text-solution');
-    // CORRIGIDO: A variável 'form' não é mais necessária para o reset.
     const formContainer = document.querySelector('.form-document-details');
+    const logoutButton = document.getElementById('logout-btn'); 
+    
+    // --- LÓGICA DE SESSÃO E TIMEOUT (PARTE RESTAURADA) ---
+    // --- LÓGICA DE SESSÃO E TIMEOUT (PARTE RESTAURADA) ---
 
-    // --- O seu código de sessão e timeout pode ser mantido aqui, pois está correto. ---
+    const TIMEOUT_DURATION = 5 * 60 * 1000; // 5 minutos
+    let timeoutInterval;
 
+    function resetTimeoutTimer() {
+        localStorage.setItem('last_activity_time', Date.now());
+    }
+
+    async function logoutUser(isTimeout = false) {
+        clearInterval(timeoutInterval);
+        if (isTimeout) {
+            alert('Sua sessão expirou por inatividade. Por favor, faça login novamente.');
+        }
+        try {
+            await apiAuthService.logout();
+        } catch (error) {
+            console.error("Erro ao encerrar sessão no servidor:", error);
+        } finally {
+            localStorage.clear();
+            sessionStorage.clear();
+            window.location.href = '../index.html';
+        }
+    }
+
+    function checkTimeout() {
+        const lastActivityTime = parseInt(localStorage.getItem('last_activity_time') || '0', 10);
+        if (Date.now() - lastActivityTime > TIMEOUT_DURATION) {
+            logoutUser(true); // Passa true para indicar que é um logout por timeout
+        }
+    }
+
+    function startTimeoutMonitoring() {
+        const activityEvents = ['mousemove', 'mousedown', 'keypress', 'scroll', 'touchstart'];
+        activityEvents.forEach(event => window.addEventListener(event, resetTimeoutTimer));
+        timeoutInterval = setInterval(checkTimeout, 5000);
+    }
+    startTimeoutMonitoring();
+
+    const currentSessionId = localStorage.getItem('active_session_id');
+    if (!sessionStorage.getItem('my_tab_session_id')) {
+        sessionStorage.setItem('my_tab_session_id', currentSessionId);
+    } else if (sessionStorage.getItem('my_tab_session_id') !== currentSessionId) {
+        alert('Sua sessão foi encerrada em outra aba. Você será desconectado.');
+        logoutUser();
+    }
+    window.addEventListener('storage', (event) => {
+        if (event.key === 'active_session_id' && event.newValue !== sessionStorage.getItem('my_tab_session_id')) {
+            alert('Sua sessão foi encerrada porque você se conectou em uma nova aba ou janela.');
+            logoutUser();
+        }
+    });
+
+    // --- LÓGICA DO BOTÃO DE LOGOUT ---
+    if (logoutButton) {
+        logoutButton.addEventListener('click', (event) => {
+            event.preventDefault();
+            logoutUser(); // Chama a função de logout manual
+        });
+    }
+
+    
     /**
      * Popula o <select> de Temas (Categorias) buscando dados da API.
      */
