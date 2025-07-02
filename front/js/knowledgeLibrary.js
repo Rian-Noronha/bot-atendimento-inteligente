@@ -1,8 +1,6 @@
-// js/knowledgeLibrary.js
-
-// Importa todos os serviços de API necessários para interagir com o backend
 import { apiKnowledgeLibraryService } from './services/apiKnowledgeLibraryService.js';
 import { apiPalavraChaveService } from './services/apiPalavraChaveService.js'; 
+import { apiAuthService } from './services/apiAuthService.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     // --- Seletores de Elementos da Página ---
@@ -24,6 +22,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const editDocumentSolution = document.getElementById('edit-document-solution');
     const editDocumentKeywords = document.getElementById('edit-document-keywords');
     const btnCancelDocument = editModal.querySelector('.btn-cancel');
+    const logoutButton = document.getElementById('logout-btn');
+
 
     // Variável para guardar todos os documentos da API, evitando chamadas repetidas para pesquisa
     let allDocuments = [];
@@ -225,6 +225,29 @@ document.addEventListener('DOMContentLoaded', () => {
             closeEditModal();
         }
     });
+
+    if (logoutButton) {
+        logoutButton.addEventListener('click', async (event) => {
+            // Impede a navegação padrão do link, pois o JS controlará o fluxo
+            event.preventDefault();
+
+            try {
+                // Tenta fazer o logout no servidor para invalidar a sessão no banco
+                await apiAuthService.logout();
+                console.log('Sessão encerrada no servidor com sucesso.');
+            } catch (error) {
+                // Mesmo que a chamada à API falhe, ainda deslogamos do frontend
+                console.error('Erro ao encerrar sessão no servidor:', error);
+            } finally {
+                // O bloco 'finally' SEMPRE é executado, garantindo o logout local.
+                // Limpa todos os dados de autenticação do navegador
+                localStorage.clear();
+                sessionStorage.clear();
+                // Redireciona para a página de login
+                window.location.href = '../index.html';
+            }
+        });
+    }
 
     // --- Chamada Inicial ---
     // Busca e renderiza os documentos assim que a página é carregada.

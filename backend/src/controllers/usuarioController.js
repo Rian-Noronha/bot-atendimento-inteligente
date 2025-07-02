@@ -67,27 +67,49 @@ exports.criarUsuario = async (req, res) => {
 };
 
 
+/**
+ * Atualiza um usuário existente usando o padrão "buscar e salvar" para garantir
+ * que os hooks do Sequelize (como o de criptografar senha) sejam acionados.
+ */
 exports.atualizarUsuario = async (req, res) => {
     try {
         const { id } = req.params;
         const { nome, email, perfil_id, ativo } = req.body;
 
-        const dadosParaAtualizar = { nome, email, perfil_id, ativo };
+        // 1. Busca a instância completa do usuário no banco
+        const usuario = await Usuario.findByPk(id);
 
-        const [numLinhasAtualizadas] = await Usuario.update(dadosParaAtualizar, {
-            where: { id: id }
+        if (!usuario) {
+            return res.status(404).json({ message: 'Usuário não encontrado.' });
+        }
+
+        // 2. Atualiza apenas os campos que foram fornecidos
+        // O operador '??' mantém o valor antigo se o novo for nulo ou indefinido
+        usuario.nome = nome ?? usuario.nome;
+        usuario.email = email ?? usuario.email;
+        usuario.perfil_id = perfil_id ?? usuario.perfil_id;
+        
+        // Trata o campo 'ativo' separadamente para permitir 'false'
+        if (ativo !== undefined) {
+            usuario.ativo = ativo;
+        }
+
+        // 3. Salva a instância atualizada. É neste passo que o hook 'beforeUpdate' é executado.
+        await usuario.save();
+        
+        // Busca novamente com o perfil para retornar os dados completos e atualizados
+        const usuarioAtualizado = await Usuario.findByPk(id, {
+            include: [{ model: Perfil, as: 'perfil'}]
         });
 
-        if (numLinhasAtualizadas > 0) {
-            const usuarioAtualizado = await Usuario.findByPk(id, {
-                attributes: { exclude: ['senha_hash'] },
-                include: [{ model: Perfil, as: 'perfil'}]
-            });
-            res.status(200).json(usuarioAtualizado);
-        } else {
-            res.status(404).json({ message: "Usuário não encontrado ou dados são os mesmos." });
-        }
+        res.status(200).json(usuarioAtualizado);
+
     } catch (error) {
+        // Trata erros de validação, como e-mail duplicado
+        if (error.name === 'SequelizeUniqueConstraintError') {
+            return res.status(409).json({ message: 'Este email já está em uso por outro usuário.' });
+        }
+        console.error("Erro ao atualizar usuário:", error);
         res.status(500).json({ message: "Erro ao atualizar usuário", error: error.message });
     }
 };

@@ -1,5 +1,5 @@
 import { apiAssuntoPendenteService } from './services/apiAssuntoPendenteService.js';
-
+import { apiAuthService } from './services/apiAuthService.js';
 document.addEventListener('DOMContentLoaded', () => {
     const hamburger = document.getElementById('hamburger');
     const aside = document.querySelector('aside');
@@ -14,9 +14,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const assuntoDecisaoPergunta = document.getElementById('assunto-decisao-pergunta');
     const btnSimCadastrar = document.getElementById('btn-sim-cadastrar');
     const btnNaoDescartar = document.getElementById('btn-nao-descartar');
-
+    const logoutButton = document.getElementById('logout-btn');
     const TIMEOUT_DURATION = 5 * 60 * 1000;
     let timeoutInterval; 
+
+
 
     /**
      * Reseta o contador de inatividade.
@@ -328,6 +330,28 @@ document.addEventListener('DOMContentLoaded', () => {
     searchInput.addEventListener('input', applyFiltersAndLimits);
     itemsPerPageInput.addEventListener('input', applyFiltersAndLimits);
 
-    // Initial fetch and render of pending subjects
+    if (logoutButton) {
+        logoutButton.addEventListener('click', async (event) => {
+            // Impede a navegação padrão do link, pois o JS controlará o fluxo
+            event.preventDefault();
+
+            try {
+                // Tenta fazer o logout no servidor para invalidar a sessão no banco
+                await apiAuthService.logout();
+                console.log('Sessão encerrada no servidor com sucesso.');
+            } catch (error) {
+                // Mesmo que a chamada à API falhe, ainda deslogamos do frontend
+                console.error('Erro ao encerrar sessão no servidor:', error);
+            } finally {
+                // O bloco 'finally' SEMPRE é executado, garantindo o logout local.
+                // Limpa todos os dados de autenticação do navegador
+                localStorage.clear();
+                sessionStorage.clear();
+                // Redireciona para a página de login
+                window.location.href = '../index.html';
+            }
+        });
+    }
+
     fetchAndRenderAssuntos();
 });

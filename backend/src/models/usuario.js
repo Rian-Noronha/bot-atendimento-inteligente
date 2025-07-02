@@ -13,13 +13,15 @@ module.exports = (sequelize, DataTypes) => {
         foreignKey: 'usuario_id',
         as: 'sessoes'
       });
+     
+      this.hasMany(models.SessaoAtiva, { 
+        foreignKey: 'usuario_id', 
+        as: 'sessoesAtivas' 
+      });
     }
   }
 
-  // 1. Função auxiliar para criptografar a senha
   const hashPassword = async (usuario) => {
-    // A função 'changed' do Sequelize verifica se o valor de um campo foi alterado.
-    // Isso garante que a criptografia só rode se a senha for nova ou modificada.
     if (usuario.changed('senha_hash') && usuario.senha_hash) {
       const salt = await bcrypt.genSalt(10);
       usuario.senha_hash = await bcrypt.hash(usuario.senha_hash, salt);
@@ -31,17 +33,29 @@ module.exports = (sequelize, DataTypes) => {
     email: DataTypes.STRING,
     senha_hash: DataTypes.STRING,
     ativo: DataTypes.BOOLEAN,
-    // 2. Adiciona os campos da migration ao model para que o Sequelize os reconheça
     reset_password_token: DataTypes.STRING,
     reset_password_expires: DataTypes.DATE
   }, {
     sequelize,
     modelName: 'Usuario',
     tableName: 'usuarios',
-    // 3. Atualiza o objeto de hooks para usar a função nos dois eventos
+    
+    // --- LÓGICA DE SCOPES ADICIONADA ---
+    defaultScope: {
+      // Por padrão, SEMPRE exclui o hash da senha das consultas
+      attributes: { exclude: ['senha_hash'] },
+    },
+    scopes: {
+      // Um "scope" nomeado, chamar para INCLUIR a senha
+      withPassword: {
+        attributes: { include: ['senha_hash'] },
+      }
+    },
+    
+
     hooks: {
       beforeCreate: hashPassword,
-      beforeUpdate: hashPassword // <-- Hook que faltava, agora adicionado.
+      beforeUpdate: hashPassword
     }
   });
 
