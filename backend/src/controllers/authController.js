@@ -6,38 +6,39 @@ const crypto = require('crypto');
 const { v4: uuidv4 } = require('uuid');
 const { enviarEmailRecuperacao } = require('../services/emailService');
 
-
 /**
  * @description Realiza o login, invalida sessões antigas e cria uma nova sessão ativa.
  */
 exports.login = async (req, res) => {
+    const t = await sequelize.transaction(); // Inicia uma transação para garantir a consistência
+
     try {
         const { email, senha } = req.body;
         if (!email || !senha) {
             return res.status(400).json({ message: "Email e senha são obrigatórios." });
         }
-        const usuario = await Usuario.findOne({
+
+        // 1. Busca o usuário COM a senha E o perfil de uma só vez
+        const usuario = await Usuario.scope('withPassword').findOne({
             where: { email },
             include: [{ model: Perfil, as: 'perfil' }]
         });
+
+        // 2. Valida o usuário e a senha
         if (!usuario || !usuario.ativo || !(await bcrypt.compare(senha, usuario.senha_hash))) {
+            await t.rollback(); // Desfaz a transação se a validação falhar
             return res.status(401).json({ message: "Credenciais inválidas ou usuário inativo." });
         }
 
-        // --- LÓGICA DE SESSÃO ÚNICA ---
-        // 1. Invalida (deleta) qualquer sessão ativa que este usuário possa ter
-        await SessaoAtiva.destroy({ where: { usuario_id: usuario.id } });
-
-        // 2. Cria um novo ID de sessão único
+        // --- LÓGICA DE SESSÃO ÚNICA (DENTRO DA TRANSAÇÃO) ---
+        await SessaoAtiva.destroy({ where: { usuario_id: usuario.id }, transaction: t });
         const sessionId = uuidv4();
-
-        // 3. Salva a nova sessão no banco de dados
-        await SessaoAtiva.create({ session_id: sessionId, usuario_id: usuario.id });
+        await SessaoAtiva.create({ session_id: sessionId, usuario_id: usuario.id }, { transaction: t });
         
-        // 4. Adiciona o ID da sessão ao payload do token JWT
+        // 3. Prepara o payload do token, já com todos os dados necessários
         const payload = {
             id: usuario.id,
-            sessionId: sessionId, // <-- A CHAVE PARA O CONTROLE
+            sessionId: sessionId,
             nome: usuario.nome,
             email: usuario.email,
             perfil: {
@@ -48,10 +49,16 @@ exports.login = async (req, res) => {
         
         const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '8h' });
         
+        // Se tudo deu certo, confirma (commita) a transação
+        await t.commit();
+        
         res.status(200).json({ token, usuario: payload });
 
     } catch (error) {
-        res.status(500).json({ message: "Erro interno no servidor durante o login.", error: error.message });
+        // Se qualquer erro ocorrer, desfaz todas as operações da transação
+        await t.rollback();
+        console.error("Erro detalhado no login:", error); // Loga o erro real no servidor
+        res.status(500).json({ message: "Erro interno no servidor durante o login." });
     }
 };
 
@@ -109,5 +116,88 @@ exports.redefinirSenha = async (req, res) => {
     } catch (error) {
         console.error("Erro no processo de 'redefinir a senha':", error);
         res.status(500).json({ message: 'Erro no servidor ao redefinir a senha.' });
+    }
+};
+
+/**
+ * @description Realiza o logout do usuário, invalidando a sua sessão ativa no servidor.
+ */
+exports.logout = async (req, res) => {
+    try {
+        // O middleware 'protect' já validou o token e a sessão,
+        // e colocou os dados do payload do token em req.user.
+        const { sessionId } = req.user;
+
+        // Apenas para garantir, verificamos se o sessionId veio no token.
+        if (sessionId) {
+            // Deleta a sessão ativa do banco de dados.
+            // Isso efetivamente invalida o token do usuário no lado do servidor.
+            await SessaoAtiva.destroy({ where: { session_id: sessionId } });
+        }
+
+        res.status(200).json({ message: 'Logout realizado com sucesso.' });
+
+    } catch (error) {
+        console.error("Erro ao realizar o logout:", error);
+        res.status(500).json({ message: 'Erro ao realizar o logout.' });
+    }
+};
+
+
+
+/**
+ * @description Retorna os dados do usuário atualmente logado (identificado pelo token).
+ */
+exports.getMe = async (req, res) => {
+    try {
+        // O middleware 'protect' já validou o token e anexou os dados em req.user.
+        // Nós só precisamos buscar os dados completos com o perfil para retornar.
+        const usuario = await Usuario.findByPk(req.user.id, {
+            include: [{ model: Perfil, as: 'perfil', attributes: ['nome'] }]
+        });
+
+        if (!usuario) {
+            return res.status(404).json({ message: 'Usuário não encontrado.' });
+        }
+        
+        res.status(200).json(usuario);
+        
+    } catch (error) {
+        res.status(500).json({ message: "Erro ao buscar dados do usuário." });
+    }
+};
+
+
+/**
+ * @description Atualiza a senha do usuário logado.
+ */
+exports.updatePassword = async (req, res) => { // Nome padronizado para updatePassword
+    try {
+        const { senhaAtual, novaSenha } = req.body;
+
+        if (!senhaAtual || !novaSenha) {
+            return res.status(400).json({ message: 'A senha atual e a nova senha são obrigatórias.' });
+        }
+
+        // A linha que estava solta agora está no lugar certo
+        const usuario = await Usuario.scope('withPassword').findByPk(req.user.id);
+
+        if (!usuario || !usuario.senha_hash) {
+            return res.status(500).json({ message: 'Não foi possível verificar as credenciais do usuário.' });
+        }
+        
+        const senhaValida = await bcrypt.compare(senhaAtual, usuario.senha_hash);
+        if (!senhaValida) {
+            return res.status(401).json({ message: 'A senha atual está incorreta.' });
+        }
+        
+        usuario.senha_hash = novaSenha;
+        await usuario.save();
+
+        res.status(200).json({ message: 'Senha atualizada com sucesso!' });
+
+    } catch (error) {
+        console.error("Erro ao atualizar senha:", error);
+        res.status(500).json({ message: 'Erro interno ao atualizar a senha.' });
     }
 };
