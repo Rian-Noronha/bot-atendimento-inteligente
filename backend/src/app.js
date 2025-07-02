@@ -15,6 +15,8 @@ const assuntoPendenteRoutes = require('./routes/assuntoPendenteRoutes');
 const feedbackRoutes = require('./routes/feedbackRoutes');
 const authRoutes= require('./routes/authRoutes');
 
+
+
 const app = express();
 const corsOptions = {
   origin: '*', // Permite qualquer origem.
@@ -38,6 +40,7 @@ app.use('/api', chatRespostaRoutes);
 app.use('/api', assuntoPendenteRoutes);
 app.use('/api', feedbackRoutes);
 app.use('/api/auth', authRoutes);
+
 
 
 module.exports = app;

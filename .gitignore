@@ -1,4 +1,5 @@
 /backend/node_modules
+/front/node_modules
 /services/ai_service/venv/
 /services/ai_service/.venv/
 **/__pycache__/
