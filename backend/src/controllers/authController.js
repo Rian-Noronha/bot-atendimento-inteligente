@@ -1,12 +1,14 @@
-const { Usuario, Perfil, sequelize } = require('../models');
+const { Usuario, Perfil, SessaoAtiva, sequelize } = require('../models');
 const { Op } = require('sequelize');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
+const { v4: uuidv4 } = require('uuid');
 const { enviarEmailRecuperacao } = require('../services/emailService');
 
+
 /**
- * @description Realiza o login do utilizador.
+ * @description Realiza o login, invalida sessões antigas e cria uma nova sessão ativa.
  */
 exports.login = async (req, res) => {
     try {
@@ -18,15 +20,24 @@ exports.login = async (req, res) => {
             where: { email },
             include: [{ model: Perfil, as: 'perfil' }]
         });
-        if (!usuario || !usuario.ativo) {
+        if (!usuario || !usuario.ativo || !(await bcrypt.compare(senha, usuario.senha_hash))) {
             return res.status(401).json({ message: "Credenciais inválidas ou usuário inativo." });
         }
-        const senhaValida = await bcrypt.compare(senha, usuario.senha_hash);
-        if (!senhaValida) {
-            return res.status(401).json({ message: "Credenciais inválidas." });
-        }
+
+        // --- LÓGICA DE SESSÃO ÚNICA ---
+        // 1. Invalida (deleta) qualquer sessão ativa que este usuário possa ter
+        await SessaoAtiva.destroy({ where: { usuario_id: usuario.id } });
+
+        // 2. Cria um novo ID de sessão único
+        const sessionId = uuidv4();
+
+        // 3. Salva a nova sessão no banco de dados
+        await SessaoAtiva.create({ session_id: sessionId, usuario_id: usuario.id });
+        
+        // 4. Adiciona o ID da sessão ao payload do token JWT
         const payload = {
             id: usuario.id,
+            sessionId: sessionId, // <-- A CHAVE PARA O CONTROLE
             nome: usuario.nome,
             email: usuario.email,
             perfil: {
@@ -34,14 +45,16 @@ exports.login = async (req, res) => {
                 nome: usuario.perfil.nome
             }
         };
+        
         const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '8h' });
+        
         res.status(200).json({ token, usuario: payload });
+
     } catch (error) {
         res.status(500).json({ message: "Erro interno no servidor durante o login.", error: error.message });
     }
 };
 
-// --- FUNÇÃO QUE ESTAVA FALTANDO ---
 /**
  * @description Etapa 1 do fluxo de recuperação: Envia o e-mail com o token.
  */

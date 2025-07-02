@@ -1,16 +1,17 @@
 const express = require('express');
 const router = express.Router();
 const subcategoriaController = require('../controllers/subcategoriaController');
+const { protect } = require('../middlewares/authMiddleware');
+const { isAdmin } = require('../middlewares/roleMiddleware');
 
-// Rota para buscar todas as subcategorias de uma categoria específica
-// Ex: GET /api/subcategorias/por-categoria/2
-router.get('/subcategorias/por-categoria/:categoriaId', subcategoriaController.pegarSubcategoriasPorCategoria);
+// --- ROTAS DE LEITURA (para todos os usuários logados) ---
+router.get('/subcategorias/por-categoria/:categoriaId', protect, subcategoriaController.pegarSubcategoriasPorCategoria);
+router.get('/subcategorias', protect, subcategoriaController.pegarTodasSubcategorias);
+router.get('/subcategorias/:id', protect, subcategoriaController.pegarSubcategoriaPorId);
 
-// Suas rotas existentes
-router.get('/subcategorias', subcategoriaController.pegarTodasSubcategorias);
-router.get('/subcategorias/:id', subcategoriaController.pegarSubcategoriaPorId);
-router.post('/subcategorias', subcategoriaController.criarSubcategoria);
-router.put('/subcategorias/:id', subcategoriaController.atualizarSubcategoria);
-router.delete('/subcategorias/:id', subcategoriaController.deletarSubcategoria);
+// --- ROTAS DE ESCRITA (apenas para Admins) ---
+router.post('/subcategorias', protect, isAdmin, subcategoriaController.criarSubcategoria);
+router.put('/subcategorias/:id', protect, isAdmin, subcategoriaController.atualizarSubcategoria);
+router.delete('/subcategorias/:id', protect, isAdmin, subcategoriaController.deletarSubcategoria);
 
 module.exports = router;
