@@ -10,7 +10,7 @@ const { enviarEmailRecuperacao } = require('../services/emailService');
  * @description Realiza o login, invalida sessões antigas e cria uma nova sessão ativa.
  */
 exports.login = async (req, res) => {
-    const t = await sequelize.transaction(); // Inicia uma transação para garantir a consistência
+    const t = await sequelize.transaction();
 
     try {
         const { email, senha } = req.body;
@@ -18,24 +18,25 @@ exports.login = async (req, res) => {
             return res.status(400).json({ message: "Email e senha são obrigatórios." });
         }
 
-        // 1. Busca o usuário COM a senha E o perfil de uma só vez
         const usuario = await Usuario.scope('withPassword').findOne({
             where: { email },
-            include: [{ model: Perfil, as: 'perfil' }]
+            include: [{ model: Perfil, as: 'perfil' }],
+            transaction: t // Garante que a leitura faça parte da transação
         });
 
-        // 2. Valida o usuário e a senha
         if (!usuario || !usuario.ativo || !(await bcrypt.compare(senha, usuario.senha_hash))) {
-            await t.rollback(); // Desfaz a transação se a validação falhar
+            await t.rollback();
             return res.status(401).json({ message: "Credenciais inválidas ou usuário inativo." });
         }
 
-        // --- LÓGICA DE SESSÃO ÚNICA (DENTRO DA TRANSAÇÃO) ---
+        // --- LÓGICA DE SESSÃO ÚNICA ---
         await SessaoAtiva.destroy({ where: { usuario_id: usuario.id }, transaction: t });
         const sessionId = uuidv4();
         await SessaoAtiva.create({ session_id: sessionId, usuario_id: usuario.id }, { transaction: t });
         
-        // 3. Prepara o payload do token, já com todos os dados necessários
+        // Se tudo deu certo, confirma a transação
+        await t.commit();
+        
         const payload = {
             id: usuario.id,
             sessionId: sessionId,
@@ -49,21 +50,36 @@ exports.login = async (req, res) => {
         
         const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '8h' });
         
-        // Se tudo deu certo, confirma (commita) a transação
-        await t.commit();
+        // Remove o hash da senha do objeto antes de enviá-lo na resposta
+        const { senha_hash, ...usuarioSemSenha } = usuario.toJSON();
         
         res.status(200).json({ token, usuario: payload });
 
     } catch (error) {
-        // Se qualquer erro ocorrer, desfaz todas as operações da transação
         await t.rollback();
-        console.error("Erro detalhado no login:", error); // Loga o erro real no servidor
+        console.error("Erro durante o login:", error);
         res.status(500).json({ message: "Erro interno no servidor durante o login." });
     }
 };
 
 /**
- * @description Etapa 1 do fluxo de recuperação: Envia o e-mail com o token.
+ * @description Realiza o logout do usuário.
+ */
+exports.logout = async (req, res) => {
+    try {
+        const { sessionId } = req.user;
+        if (sessionId) {
+            await SessaoAtiva.destroy({ where: { session_id: sessionId } });
+        }
+        res.status(200).json({ message: 'Logout realizado com sucesso.' });
+    } catch (error) {
+        console.error("Erro ao realizar o logout:", error);
+        res.status(500).json({ message: 'Erro ao realizar o logout.' });
+    }
+};
+
+/**
+ * @description Inicia o fluxo de recuperação de senha.
  */
 exports.esqueciSenha = async (req, res) => {
     try {
@@ -71,7 +87,6 @@ exports.esqueciSenha = async (req, res) => {
         const usuario = await Usuario.findOne({ where: { email } });
 
         if (!usuario) {
-            // Por segurança, não informamos se o e-mail existe ou não.
             return res.status(200).json({ message: 'Se um usuário com este e-mail existir, um link de recuperação será enviado.' });
         }
 
@@ -91,7 +106,7 @@ exports.esqueciSenha = async (req, res) => {
 };
 
 /**
- * @description Etapa 2 do fluxo de recuperação: Redefine a senha.
+ * @description Finaliza o fluxo de recuperação de senha.
  */
 exports.redefinirSenha = async (req, res) => {
     try {
@@ -120,38 +135,10 @@ exports.redefinirSenha = async (req, res) => {
 };
 
 /**
- * @description Realiza o logout do usuário, invalidando a sua sessão ativa no servidor.
- */
-exports.logout = async (req, res) => {
-    try {
-        // O middleware 'protect' já validou o token e a sessão,
-        // e colocou os dados do payload do token em req.user.
-        const { sessionId } = req.user;
-
-        // Apenas para garantir, verificamos se o sessionId veio no token.
-        if (sessionId) {
-            // Deleta a sessão ativa do banco de dados.
-            // Isso efetivamente invalida o token do usuário no lado do servidor.
-            await SessaoAtiva.destroy({ where: { session_id: sessionId } });
-        }
-
-        res.status(200).json({ message: 'Logout realizado com sucesso.' });
-
-    } catch (error) {
-        console.error("Erro ao realizar o logout:", error);
-        res.status(500).json({ message: 'Erro ao realizar o logout.' });
-    }
-};
-
-
-
-/**
- * @description Retorna os dados do usuário atualmente logado (identificado pelo token).
+ * @description Retorna os dados do usuário logado.
  */
 exports.getMe = async (req, res) => {
     try {
-        // O middleware 'protect' já validou o token e anexou os dados em req.user.
-        // Nós só precisamos buscar os dados completos com o perfil para retornar.
         const usuario = await Usuario.findByPk(req.user.id, {
             include: [{ model: Perfil, as: 'perfil', attributes: ['nome'] }]
         });
@@ -171,7 +158,7 @@ exports.getMe = async (req, res) => {
 /**
  * @description Atualiza a senha do usuário logado.
  */
-exports.updatePassword = async (req, res) => { // Nome padronizado para updatePassword
+exports.updatePassword = async (req, res) => {
     try {
         const { senhaAtual, novaSenha } = req.body;
 
@@ -179,7 +166,6 @@ exports.updatePassword = async (req, res) => { // Nome padronizado para updatePa
             return res.status(400).json({ message: 'A senha atual e a nova senha são obrigatórias.' });
         }
 
-        // A linha que estava solta agora está no lugar certo
         const usuario = await Usuario.scope('withPassword').findByPk(req.user.id);
 
         if (!usuario || !usuario.senha_hash) {
