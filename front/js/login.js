@@ -40,9 +40,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 // 3. Redireciona com base no perfil do utilizador
                 const perfilNome = loginData.usuario.perfil.nome;
                 if (perfilNome.toLowerCase() === 'administrador') {
-                    window.location.href = './pages/dasboard.html';
+                    window.location.href = '/pages/dashboard.html';
                 } else {
-                    window.location.href = './pages/chatbot.html';
+                    window.location.href = '/pages/chatbot.html';
                 }
             }
 
