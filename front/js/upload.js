@@ -1,7 +1,7 @@
 // 1. Importando todos os serviços de API e o novo serviço de armazenamento
 import { apiCategoriaService } from './services/apiCategoriaService.js';
 import { apiPalavraChaveService } from './services/apiPalavraChaveService.js';
-import { apiDocumentoService } from './services/apiKnowledgeLibraryService.js';
+import { apiKnowledgeLibraryService } from './services/apiKnowledgeLibraryService.js';
 import { apiAuthService } from './services/apiAuthService.js';
 import { storageService } from './services/storageService.js'; // Importa o serviço do Firebase
 
@@ -162,7 +162,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     urlArquivo: null,
                     palavrasChaveIds: palavrasChaveIds,
                 };
-                await apiDocumentoService.criar(dadosDocumento);
+                await apiKnowledgeLibraryService.criar(dadosDocumento);
                 alert('Documento manual guardado com sucesso!');
                 window.location.href = './knowledge_library.html';
             } catch (error) {
@@ -180,7 +180,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const fileUrl = await storageService.uploadFile(file, 'documentos'); 
 
                 uploadStatus.textContent = 'A solicitar análise de IA...';
-                await apiDocumentoService.iniciarProcessamento({ urlArquivo: fileUrl });
+                await apiKnowledgeLibraryService.iniciarProcessamento({ urlArquivo: fileUrl });
 
                 alert('Ficheiro enviado para processamento! Isto pode levar alguns minutos.');
                 window.location.href = './knowledge_library.html';
