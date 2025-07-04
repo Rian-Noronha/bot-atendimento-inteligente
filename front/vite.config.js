@@ -23,12 +23,12 @@ export default defineConfig({
   },
 
   server: {
+    hist: true,
     open: '/index.html', 
     proxy: {
       '/api': {
         target: 'http://localhost:3000', 
         changeOrigin: true, // Necessário para virtual hosts baseados em nome
-        rewrite: (path) => path.replace(/^\/api/, ''),
       },
     },
   },
