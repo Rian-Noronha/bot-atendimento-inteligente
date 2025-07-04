@@ -23,7 +23,7 @@ export default defineConfig({
   },
 
   server: {
-    hist: true,
+    host: true,
     open: '/index.html', 
     proxy: {
       '/api': {
