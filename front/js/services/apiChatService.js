@@ -1,34 +1,14 @@
-const API_URL = 'http://localhost:3000/api';
-function getAuthHeaders() {
-    const token = localStorage.getItem('authToken');
-    const headers = {
-        'Content-Type': 'application/json',
-    };
-    if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-    }
-    return headers;
-}
-
-/**
- * Lida com erros de resposta da API de forma padronizada.
- */
-async function handleResponseError(response) {
-    if (response.status === 401) {
-        alert('A sua sessão expirou. Por favor, inicie sessão novamente.');
-        window.location.href = '/index.html'; 
-    }
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.message || `Ocorreu um erro: ${response.statusText}`);
-}
+// 1. Importa as funções compartilhadas do nosso novo módulo de utilitários
+import { getAuthHeaders, handleResponseError } from '../utils/apiUtils.js';
 
 export const apiChatService = {
 
     /**
-     * Inicia uma nova sessão de chat. O backend identifica o utilizador pelo token.
+     * Inicia uma nova sessão de chat.
      */
     async iniciarSessao() {
-        const response = await fetch(`${API_URL}/chat/iniciar-sessao`, {
+        // 2. A URL agora é um caminho relativo, que será interceptado pelo proxy do Vite
+        const response = await fetch(`/api/chat/iniciar-sessao`, {
             method: 'POST',
             headers: getAuthHeaders()
         });
@@ -38,12 +18,10 @@ export const apiChatService = {
 
     /**
      * Envia uma nova pergunta (consulta) para o backend.
-     * O backend irá orquestrar a chamada para a IA, salvar a pergunta e a resposta,
-     * e retornar a resposta final da IA.
      * @param {object} dadosConsulta - Contém pergunta, sessao_id e subcategoria_id.
      */
     async criarConsultaEObterResposta(dadosConsulta) {
-        const response = await fetch(`${API_URL}/chat/consultas`, {
+        const response = await fetch(`/api/chat/consultas`, {
             method: 'POST',
             headers: getAuthHeaders(),
             body: JSON.stringify(dadosConsulta)
@@ -57,7 +35,7 @@ export const apiChatService = {
      * @param {object} dadosFeedback - Contém util (true/false) e resposta_id.
      */
     async criarFeedback(dadosFeedback) {
-        const response = await fetch(`${API_URL}/feedbacks`, {
+        const response = await fetch(`/api/feedbacks`, {
             method: 'POST',
             headers: getAuthHeaders(),
             body: JSON.stringify(dadosFeedback)
