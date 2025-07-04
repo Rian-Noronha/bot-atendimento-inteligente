@@ -6,6 +6,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const passwordInput = document.getElementById('password'); 
     const loginStatusMessage = document.getElementById('login-status-message');
 
+    // Limpa qualquer sessão antiga ao chegar na página de login para evitar erros "fantasma".
+    localStorage.clear();
+    sessionStorage.clear();
     
     loginForm.addEventListener('submit', async (event) => {
         event.preventDefault(); 
@@ -31,8 +34,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 localStorage.setItem('authToken', loginData.token);
                 localStorage.setItem('loggedInUser', JSON.stringify(loginData.usuario));
 
-                // 2. Configura a gestão da sessão
-                const sessionId = Date.now().toString();
+                // --- ✅ CORREÇÃO APLICADA AQUI ---
+                // 2. Pega o ID da sessão que veio do backend e o usa como a fonte da verdade
+                const sessionId = loginData.usuario.sessionId; 
+                if (!sessionId) {
+                    // Garante que o backend está a enviar o sessionId
+                    throw new Error('Falha na autenticação: ID de sessão não recebido do servidor.');
+                }
                 localStorage.setItem('active_session_id', sessionId);
                 sessionStorage.setItem('my_tab_session_id', sessionId);
                 localStorage.setItem('last_activity_time', Date.now());
@@ -40,9 +48,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 // 3. Redireciona com base no perfil do utilizador
                 const perfilNome = loginData.usuario.perfil.nome;
                 if (perfilNome.toLowerCase() === 'administrador') {
-                    window.location.href = '/pages/dashboard.html';
+                    window.location.href = './pages/dashboard.html';
                 } else {
-                    window.location.href = '/pages/chatbot.html';
+                    window.location.href = './pages/chatbot.html';
                 }
             }
 
