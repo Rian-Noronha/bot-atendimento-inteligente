@@ -9,11 +9,11 @@
     </head>
     <body class="report-page">
         <div class="report-container">
-            <a href="./dasboard.html" class="back-button" title="Voltar para o Painel">
+            <a href="./dashboard.html" class="back-button" title="Voltar para o Painel">
                 <i class="bi bi-arrow-left-circle"></i> Voltar
             </a>
             
-            <h1>Relatório de temas</h1>
+            <h1>Relatório de Análise de Assuntos</h1>
 
             <div class="filter-container">
                 <div class="textfield">
@@ -24,47 +24,58 @@
                     <label for="end-date">Data de Fim:</label>
                     <input type="date" id="end-date">
                 </div>
-                <button id="generate-report-btn" class="upload-button">Relatar</button>
+                <button id="generate-report-btn" class="upload-button">Gerar Relatório</button>
                 <button id="export-pdf-btn" class="btn-export">
-                    <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#000"><path d="M360-460h40v-80h40q17 0 28.5-11.5T480-580v-40q0-17-11.5-28.5T440-660h-80v200Zm40-120v-40h40v40h-40Zm120 120h80q17 0 28.5-11.5T640-500v-120q0-17-11.5-28.5T600-660h-80v200Zm40-40v-120h40v120h-40Zm120 40h40v-80h40v-40h-40v-40h40v-40h-80v200ZM320-240q-33 0-56.5-23.5T240-320v-480q0-33 23.5-56.5T320-880h480q33 0 56.5 23.5T880-800v480q0 33-23.5 56.5T800-240H320Zm0-80h480v-480H320v480ZM160-80q-33 0-56.5-23.5T80-160v-560h80v560h560v80H160Zm160-720v480-480Z"/></svg>Exportar
+                    <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#000"><path d="M360-460h40v-80h40q17 0 28.5-11.5T480-580v-40q0-17-11.5-28.5T440-660h-80v200Zm40-120v-40h40v40h-40Zm120 120h80q17 0 28.5-11.5T640-500v-120q0-17-11.5-28.5T600-660h-80v200Zm40-40v-120h40v120h-40Zm120 40h40v-80h40v-40h-40v-40h40v-40h-80v200ZM320-240q-33 0-56.5-23.5T240-320v-480q0-33 23.5-56.5T320-880h480q33 0 56.5 23.5T880-800v480q0 33-23.5 56.5T800-240H320Zm0-80h480v-480H320v480ZM160-80q-33 0-56.5-23.5T80-160v-560h80v560h560v80H160Zm160-720v480-480Z"/></svg>Exportar PDF
                 </button>
             </div>
 
+            <!-- SEÇÃO DE ESTATÍSTICAS ATUALIZADA -->
             <div class="summary-stats">
                 <div class="stat-card">
-                    <h4>Total de assuntos resolvidos</h4>
+                    <h4>Total Resolvido</h4>
                     <p id="total-subjects">0</p>
+                    <i class="bi bi-check-all"></i>
+                </div>
+                <div class="stat-card">
+                    <h4>Média Diária</h4>
+                    <p id="daily-average">0.0</p>
                     <i class="bi bi-bar-chart-line-fill"></i>
                 </div>
                 <div class="stat-card">
-                    <h4>Tema mais resolvido</h4>
+                    <h4>Tema Principal</h4>
                     <p id="top-category">N/A</p>
                     <i class="bi bi-tags-fill"></i>
                 </div>
                 <div class="stat-card">
-                    <h4>Dia de pico</h4>
-                    <p id="peak-day">N/A</p>
+                    <h4>Micro-tema Principal</h4>
+                    <p id="top-subcategory">N/A</p>
+                    <i class="bi bi-tag-fill"></i>
+                </div>
+                <div class="stat-card">
+                    <h4>Pico Semanal</h4>
+                    <p id="peak-weekday">N/A</p>
                     <i class="bi bi-calendar-check-fill"></i>
                 </div>
             </div>
 
             <div id="report-main-content">
                 <div class="chart-container">
-                    <h3>Distribuição por tema</h3>
+                    <h3>Distribuição por Tema</h3>
                     <canvas id="category-chart"></canvas>
                 </div>
                 <div class="list-container">
-                    <h3>Detalhamento dos temas</h3>
+                    <h3>Detalhamento dos Temas</h3>
                     <div id="report-results-list">
-                        </div>
+                        <!-- A lista detalhada será inserida aqui -->
+                    </div>
                 </div>
             </div>
         </div>
 
         <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/chart.js">
-        </script> <script src="../js/report.js">
-        </script>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <script src="../js/report.js"></script>
     </body>
 </html>

@@ -1,3 +1,5 @@
+import { apiAssuntoPendenteService } from './services/apiAssuntoPendenteService.js';
+import { apiAuthService } from './services/apiAuthService.js';
 document.addEventListener('DOMContentLoaded', () => {
     const hamburger = document.getElementById('hamburger');
     const aside = document.querySelector('aside');
@@ -5,20 +7,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const itemsPerPageInput = document.getElementById('num-items-display');
     const assuntosContainer = document.querySelector('section.assuntos > div');
 
- 
     const assuntoDecisaoModal = document.getElementById('assunto-decisao-modal');
-    const assuntoDecisaoIdInput = document.getElementById('assunto-decisao-id'); 
+    const assuntoDecisaoIdInput = document.getElementById('assunto-decisao-id');
     const assuntoDecisaoCategoria = document.getElementById('assunto-decisao-categoria');
     const assuntoDecisaoSubcategoria = document.getElementById('assunto-decisao-subcategoria');
     const assuntoDecisaoPergunta = document.getElementById('assunto-decisao-pergunta');
-    const btnSimCadastrar = document.getElementById('btn-sim-cadastrar'); 
+    const btnSimCadastrar = document.getElementById('btn-sim-cadastrar');
     const btnNaoDescartar = document.getElementById('btn-nao-descartar');
+    const logoutButton = document.getElementById('logout-btn');
+    const TIMEOUT_DURATION = 5 * 60 * 1000;
+    let timeoutInterval; 
 
 
-    // --- LÓGICA DE TIMEOUT DE SESSÃO (5 MINUTOS) ---
-
-    const TIMEOUT_DURATION = 5 * 60 * 1000; 
-    let timeoutInterval; // Variável para guardar nosso "vigia".
 
     /**
      * Reseta o contador de inatividade.
@@ -40,6 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.removeItem('active_session_id');
         localStorage.removeItem('last_activity_time');
         localStorage.removeItem('loggedInUser'); // Limpa também o usuário logado
+        localStorage.removeItem('authToken'); // Clear authentication token
 
         // Avisa o usuário e o redireciona para a tela de login.
         alert('Sua sessão expirou por inatividade. Por favor, faça login novamente.');
@@ -77,9 +78,6 @@ document.addEventListener('DOMContentLoaded', () => {
         timeoutInterval = setInterval(checkTimeout, 5000);
     }
 
-    
-
-
     // Inicia o monitoramento assim que a página é carregada.
     startTimeoutMonitoring();
 
@@ -110,29 +108,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-
-     let mockAssuntos = JSON.parse(localStorage.getItem('mockAssuntos')) || [
-        { id: 1, tema: 'Cartão', microtema: 'Bloqueio', pergunta: 'Cliente questiona motivo de bloqueio possuindo uma renegociação (RN) vigente.', status: 'pendente' },
-        { id: 2, tema: 'Cartão', microtema: 'Bloqueio', pergunta: 'Como proceder com o desbloqueio por atraso ou falta de utilização do crédito?', status: 'pendente' },
-        { id: 3, tema: 'Cartão', microtema: 'Bloqueio', pergunta: 'Meu cartão foi bloqueado por restrição no CPF (SPC/Serasa), o que fazer?', status: 'pendente' },
-        { id: 4, tema: 'Cartão', microtema: 'Bloqueio', pergunta: 'Cartão bloqueado por cadastro pendente de atualização. Quais documentos preciso levar?', status: 'pendente' },
-        { id: 5, tema: 'Cartão', microtema: 'Bloqueio', pergunta: 'Qual o motivo do bloqueio por "política interna" e como resolver?', status: 'pendente' },
-        { id: 6, tema: 'Cartão', microtema: 'Bloqueio', pergunta: 'Meu cartão foi bloqueado por suspeita de fraude. Como faço para desbloquear?', status: 'pendente' },
-        { id: 7, tema: 'Cartão', microtema: 'Bloqueio', pergunta: 'O que significa o bloqueio jurídico e como o desbloqueio é analisado?', status: 'pendente' },
-        { id: 8, tema: 'SAC', microtema: 'Chamados', pergunta: 'Como consigo acessar minhas milhas?', status: 'pendente' },
-        { id: 9, tema: 'SAC', microtema: 'Chamados', pergunta: 'Por que meu limite diminuiu?', status: 'pendente' },
-    ];
-
-
-
-    // Salva o estado inicial se ainda não estiver no localStorage
-    if (!localStorage.getItem('mockAssuntos')) {
-        localStorage.setItem('mockAssuntos', JSON.stringify(mockAssuntos));
-    }
-
-    function updatePersistentAssuntos() {
-        localStorage.setItem('mockAssuntos', JSON.stringify(mockAssuntos));
-    }
+    let assuntos = []; // Armazenará os assuntos buscados da API
 
     //lógica do Hamburger menu sidebar retrátil
     if (hamburger && aside) {
@@ -149,7 +125,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-   
     function getBarColor(status) {
         switch (status) {
             case 'pendente':
@@ -166,21 +141,29 @@ document.addEventListener('DOMContentLoaded', () => {
     function createCardElement(assunto) {
         const cardDiv = document.createElement('div');
         cardDiv.classList.add('card');
+
+        // Acessando as propriedades aninhadas da resposta da API
+        const tema = assunto.subcategoria?.categoria?.nome || 'Tema Desconhecido';
+        const microtema = assunto.subcategoria?.nome || 'Microtema Desconhecido';
+        // Usamos consulta.pergunta ou texto_assunto como fallback
+        const pergunta = assunto.consulta?.pergunta || assunto.texto_assunto || 'Pergunta não disponível';
+        const status = assunto.status || 'pendente'; // Garante que o status tenha um valor padrão
+
         cardDiv.dataset.id = assunto.id;
-        cardDiv.dataset.tema = assunto.tema.toLowerCase();
-        cardDiv.dataset.microtema = assunto.microtema.toLowerCase();
-        cardDiv.dataset.status = assunto.status;
+        cardDiv.dataset.tema = tema.toLowerCase();
+        cardDiv.dataset.microtema = microtema.toLowerCase();
+        cardDiv.dataset.status = status; // Não precisa de .toLowerCase() aqui
         cardDiv.style.cursor = 'pointer';
 
         cardDiv.innerHTML = `
-            <div class="barra" style="background: ${getBarColor(assunto.status)};"></div>
+            <div class="barra" style="background: ${getBarColor(status)};"></div>
             <div class="conteudo">
-                <h3>${assunto.tema}</h3>
-                <h4>${assunto.microtema}</h2>
-                <p>${assunto.pergunta}</p>
+                <h3>${tema}</h3>
+                <h4>${microtema}</h2>
+                <p>${pergunta}</p>
                 <div class="acoes">
                     <button class="btn-decide-assunto" data-id="${assunto.id}" title="Avaliar assunto">
-                        <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#e3e3e3"><path d="M440-280h80v-240h-80v240Zm40-320q17 0 28.5-11.5T520-640q0-17-11.5-28.5T480-680q-17 0-28.5 11.5T440-640q0 17 11.5 28.5T480-600Zm0 520q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-80q134 0 227-93t93-227q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 134 93 227t227 93Zm0-320Z"/></svg> 
+                        <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#e3e3e3"><path d="M440-280h80v-240h-80v240Zm40-320q17 0 28.5-11.5T520-640q0-17-11.5-28.5T480-680q-17 0-28.5 11.5T440-640q0 17 11.5 28.5T480-600Zm0 520q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-80q134 0 227-93t93-227q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 134 93 227t227 93Zm0-320Z"/></svg>
                     </button>
                 </div>
             </div>
@@ -202,13 +185,28 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    async function fetchAndRenderAssuntos() {
+        try {
+            assuntos = await apiAssuntoPendenteService.pegarTodosPendentes();
+            applyFiltersAndLimits();
+        } catch (error) {
+            console.error('Erro ao buscar assuntos pendentes:', error);
+            alert('Não foi possível carregar os assuntos pendentes. Por favor, tente novamente.');
+        }
+    }
+
     function applyFiltersAndLimits() {
-        let currentFilteredAssuntos = [...mockAssuntos];
+        let currentFilteredAssuntos = [...assuntos]; // Use the fetched 'assuntos'
 
         const searchTerm = searchInput.value.toLowerCase().trim();
         if (searchTerm) {
             currentFilteredAssuntos = currentFilteredAssuntos.filter(assunto => {
-                const fullText = `${assunto.tema} ${assunto.microtema} ${assunto.pergunta}`.toLowerCase();
+                // Acessa as propriedades como elas vêm da API para a busca
+                const tema = assunto.subcategoria?.categoria?.nome || '';
+                const microtema = assunto.subcategoria?.nome || '';
+                const pergunta = assunto.consulta?.pergunta || assunto.texto_assunto || '';
+
+                const fullText = `${tema} ${microtema} ${pergunta}`.toLowerCase();
                 return fullText.includes(searchTerm);
             });
         }
@@ -222,19 +220,24 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function openAssuntoDecisaoModal(assuntoId) {
-        const assunto = mockAssuntos.find(a => a.id === assuntoId);
+        const assunto = assuntos.find(a => a.id === assuntoId); // Use 'assuntos'
         if (assunto) {
-            assuntoDecisaoIdInput.value = assunto.id; // Corrigido o nome da variável
-            assuntoDecisaoCategoria.value = assunto.tema;
-            assuntoDecisaoSubcategoria.value = assunto.microtema;
-            assuntoDecisaoPergunta.value = assunto.pergunta;
+            // Acessando as propriedades aninhadas para preencher o modal
+            const tema = assunto.subcategoria?.categoria?.nome || '';
+            const microtema = assunto.subcategoria?.nome || '';
+            const pergunta = assunto.consulta?.pergunta || assunto.texto_assunto || '';
+
+            assuntoDecisaoIdInput.value = assunto.id;
+            assuntoDecisaoCategoria.value = tema;
+            assuntoDecisaoSubcategoria.value = microtema;
+            assuntoDecisaoPergunta.value = pergunta;
 
             btnSimCadastrar.href = `./upload.html?assuntoId=${assunto.id}`;
             console.log(assunto.id);
             assuntoDecisaoModal.style.display = 'flex';
             setTimeout(() => {
                 assuntoDecisaoModal.classList.add('active');
-            }, 10); 
+            }, 10);
         }
     }
 
@@ -247,60 +250,73 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 
-
-
-    btnSimCadastrar.addEventListener('click', (event) => {
+    btnSimCadastrar.addEventListener('click', async (event) => {
+        event.preventDefault(); // Prevent default navigation to handle approval logic first
         const assuntoId = parseInt(assuntoDecisaoIdInput.value);
-        const assuntoIndex = mockAssuntos.findIndex(a => a.id === assuntoId);
-        
-       if (assuntoIndex !== -1) {
-            const approvedSubject = { ...mockAssuntos[assuntoIndex] };
-            approvedSubject.status = 'aprovado';
-            approvedSubject.approvedDate = new Date().toISOString();
 
-            // Salva o assunto aprovado no localStorage para o relatório
-            const approvedSubjects = JSON.parse(localStorage.getItem('approvedSubjects')) || [];
-            approvedSubjects.push(approvedSubject);
-            localStorage.setItem('approvedSubjects', JSON.stringify(approvedSubjects));
-            
-            // remove o assunto da lista principal
-            mockAssuntos = mockAssuntos.filter(a => a.id !== assuntoId); 
-            updatePersistentAssuntos();
-            
-            closeAssuntoDecisaoModal();
-            applyFiltersAndLimits();
-            
-        } else {
-            alert('Erro: Assunto não encontrado para aprovação.');
-            event.preventDefault(); // previnir navegação se houver erro
+        try {
+            // Update status via API
+            await apiAssuntoPendenteService.atualizarStatus(assuntoId, 'aprovado');
+
+            // Find the approved subject in the local 'assuntos' array
+            const assuntoIndex = assuntos.findIndex(a => a.id === assuntoId);
+            if (assuntoIndex !== -1) {
+                // Prepara o objeto aprovado com a estrutura esperada para o relatório, se necessário
+                const approvedSubject = {
+                    id: assuntos[assuntoIndex].id,
+                    tema: assuntos[assuntoIndex].subcategoria?.categoria?.nome || '',
+                    microtema: assuntos[assuntoIndex].subcategoria?.nome || '',
+                    pergunta: assuntos[assuntoIndex].consulta?.pergunta || assuntos[assuntoIndex].texto_assunto || '',
+                    status: 'aprovado',
+                    approvedDate: new Date().toISOString(),
+                    // Você pode adicionar outras propriedades originais se forem relevantes para o relatório
+                };
+
+                // Salva o assunto aprovado no localStorage para o relatório
+                const approvedSubjects = JSON.parse(localStorage.getItem('approvedSubjects')) || [];
+                approvedSubjects.push(approvedSubject);
+                localStorage.setItem('approvedSubjects', JSON.stringify(approvedSubjects));
+
+                // Remove o assunto da lista local de assuntos pendentes
+                assuntos = assuntos.filter(a => a.id !== assuntoId);
+
+                closeAssuntoDecisaoModal();
+                applyFiltersAndLimits(); // Re-render cards
+                window.location.href = `./upload.html?assuntoId=${assuntoId}`; // Navigate after successful update
+            } else {
+                alert('Erro: Assunto não encontrado localmente após aprovação.');
+            }
+        } catch (error) {
+            console.error('Erro ao aprovar assunto:', error);
+            alert('Não foi possível aprovar o assunto. Por favor, tente novamente.');
         }
     });
 
 
-    
-    btnNaoDescartar.addEventListener('click', () => {
+    btnNaoDescartar.addEventListener('click', async () => {
         const assuntoId = parseInt(assuntoDecisaoIdInput.value);
-        const assuntoIndex = mockAssuntos.findIndex(a => a.id === assuntoId);
-        if (assuntoIndex !== -1) {
-            mockAssuntos[assuntoIndex].status = 'descartado';
-            alert(`Assunto "${mockAssuntos[assuntoIndex].pergunta}" descartado.`);
+        try {
+            // Update status via API
+            await apiAssuntoPendenteService.atualizarStatus(assuntoId, 'descartado');
 
-          
-            mockAssuntos = mockAssuntos.filter(a => a.id !== assuntoId); 
+            // Remove o assunto da lista local de assuntos pendentes
+            assuntos = assuntos.filter(a => a.id !== assuntoId);
 
+            alert(`Assunto descartado com sucesso.`);
             closeAssuntoDecisaoModal();
-            applyFiltersAndLimits(); 
+            applyFiltersAndLimits(); // Re-render cards
+        } catch (error) {
+            console.error('Erro ao descartar assunto:', error);
+            alert('Não foi possível descartar o assunto. Por favor, tente novamente.');
         }
     });
 
-   
     assuntoDecisaoModal.addEventListener('click', (event) => {
         if (event.target === assuntoDecisaoModal) {
             closeAssuntoDecisaoModal();
         }
     });
 
-    
     assuntosContainer.addEventListener('click', (event) => {
         const clickedCard = event.target.closest('.card');
         if (clickedCard) {
@@ -314,6 +330,28 @@ document.addEventListener('DOMContentLoaded', () => {
     searchInput.addEventListener('input', applyFiltersAndLimits);
     itemsPerPageInput.addEventListener('input', applyFiltersAndLimits);
 
-  
-    applyFiltersAndLimits();
+    if (logoutButton) {
+        logoutButton.addEventListener('click', async (event) => {
+            // Impede a navegação padrão do link, pois o JS controlará o fluxo
+            event.preventDefault();
+
+            try {
+                // Tenta fazer o logout no servidor para invalidar a sessão no banco
+                await apiAuthService.logout();
+                console.log('Sessão encerrada no servidor com sucesso.');
+            } catch (error) {
+                // Mesmo que a chamada à API falhe, ainda deslogamos do frontend
+                console.error('Erro ao encerrar sessão no servidor:', error);
+            } finally {
+                // O bloco 'finally' SEMPRE é executado, garantindo o logout local.
+                // Limpa todos os dados de autenticação do navegador
+                localStorage.clear();
+                sessionStorage.clear();
+                // Redireciona para a página de login
+                window.location.href = '../index.html';
+            }
+        });
+    }
+
+    fetchAndRenderAssuntos();
 });

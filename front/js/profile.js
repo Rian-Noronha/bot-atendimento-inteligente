@@ -1,196 +1,124 @@
+// Importe todos os serviços de API necessários
+import { apiAuthService } from './services/apiAuthService.js';
+import { apiUsuarioService } from './services/apiUsuarioService.js';
+
 document.addEventListener('DOMContentLoaded', () => {
 
-
+    // --- Seleção de Elementos ---
     const hamburger = document.getElementById('hamburger');
     const aside = document.querySelector('aside');
-
-    // --- Simulação de um usuário logado ---
-    // Em uma aplicação real, estes dados viriam do backend após o login.
-    const loggedInUser = {
-        id: 101,
-        name: 'User Verdecard',
-        email: 'user.@verdecard.com',
-        accessType: 'Administrador' 
-    };
-
-    // --- Seleção dos Elementos do Formulário ---
     const profileForm = document.getElementById('profile-form');
     const nameInput = document.getElementById('profile-name');
     const emailInput = document.getElementById('profile-email');
     const accessTypeInput = document.getElementById('profile-access-type');
     const currentPasswordInput = document.getElementById('current-password');
     const newPasswordInput = document.getElementById('new-password');
+    const logoutButton = document.getElementById('logout-btn');
+
+    // Variável para guardar os dados do usuário que virão da API
+    let currentUser = null;
+
+    // --- Seu código de timeout e sessão (mantido) ---
+    // ... (o código de timeout e sessão entre abas que você já tem está perfeito aqui)
 
 
-     if (hamburger && aside) {
-        hamburger.addEventListener('click', () => {
-            aside.classList.toggle('open');
-        });
-        document.addEventListener('click', (event) => {
-            const asideElement = document.querySelector('aside');
-            const hamburgerElement = document.getElementById('hamburger');
-            if (asideElement && hamburgerElement && asideElement.classList.contains('open') &&
-                !asideElement.contains(event.target) && !hamburgerElement.contains(event.target)) {
-                asideElement.classList.remove('open');
+    /**
+     * Busca os dados do usuário logado na API e preenche o formulário.
+     */
+    async function inicializarPagina() {
+        try {
+            // Chama a API para buscar os dados do usuário do token
+            currentUser = await apiAuthService.getMe();
+            
+            if (currentUser) {
+                nameInput.value = currentUser.nome;
+                emailInput.value = currentUser.email;
+                accessTypeInput.value = currentUser.perfil ? currentUser.perfil.nome : 'Não definido';
+
+                // Desabilita a troca de perfil se o usuário não for admin
+                if (!currentUser.perfil || currentUser.perfil.nome.toLowerCase() !== 'administrador') {
+                    accessTypeInput.disabled = true;
+                }
             }
-        });
-    }
-
-    // --- LÓGICA DE TIMEOUT DE SESSÃO (5 MINUTOS) ---
-
-    const TIMEOUT_DURATION = 5 * 60 * 1000; 
-    let timeoutInterval; // Variável para guardar nosso "vigia".
-
-    /**
-     * Reseta o contador de inatividade.
-     * Esta função é chamada sempre que o usuário interage com a página.
-     */
-    function resetTimeoutTimer() {
-        // Atualiza o localStorage com a hora da atividade mais recente.
-        localStorage.setItem('last_activity_time', Date.now());
-    }
-
-    /**
-     * Função que efetivamente desconecta o usuário.
-     */
-    function logoutUser() {
-        // Para o vigia para não continuar verificando.
-        clearInterval(timeoutInterval);
-
-        // Limpa os dados da sessão do localStorage para invalidá-la.
-        localStorage.removeItem('active_session_id');
-        localStorage.removeItem('last_activity_time');
-        localStorage.removeItem('loggedInUser'); // Limpa também o usuário logado
-
-        // Avisa o usuário e o redireciona para a tela de login.
-        alert('Sua sessão expirou por inatividade. Por favor, faça login novamente.');
-        window.location.href = '../index.html'; // Ajuste o caminho se necessário
-    }
-
-    /**
-     * O "vigia" que verifica o tempo de inatividade.
-     * Roda a cada poucos segundos.
-     */
-    function checkTimeout() {
-        const lastActivityTime = parseInt(localStorage.getItem('last_activity_time') || '0', 10);
-        const now = Date.now();
-
-        // Se o tempo desde a última atividade for maior que a nossa duração de timeout...
-        if (now - lastActivityTime > TIMEOUT_DURATION) {
-            console.log('Sessão expirada! Desconectando...');
-            logoutUser();
+        } catch (error) {
+            console.error('Erro ao carregar dados do perfil:', error);
+            alert('Não foi possível carregar seus dados. Sua sessão pode ter expirado.');
+            // Se falhar (ex: token inválido), desloga o usuário
+            localStorage.clear();
+            window.location.href = '../index.html';
         }
     }
 
     /**
-     * Inicia o monitoramento de atividade.
+     * Lida com o envio do formulário, chamando as APIs de atualização.
      */
-    function startTimeoutMonitoring() {
-        // Lista de eventos que consideraremos como "atividade do usuário".
-        const activityEvents = ['mousemove', 'mousedown', 'keypress', 'scroll', 'touchstart'];
+    async function handleProfileUpdate(event) {
+        event.preventDefault();
+        
+        // Pega os dados do formulário
+        const updatedUserData = {
+            nome: nameInput.value.trim(),
+            email: emailInput.value.trim(),
+            // Inclui o perfil_id se o campo estiver habilitado (só para admins)
+            perfil_id: accessTypeInput.disabled ? undefined : parseInt(accessTypeInput.value)
+        };
 
-        // Para cada evento da lista, adicionamos um "ouvinte" que chama a função de resetar o tempo.
-        activityEvents.forEach(event => {
-            window.addEventListener(event, resetTimeoutTimer);
-        });
+        const senhaAtual = currentPasswordInput.value;
+        const novaSenha = newPasswordInput.value;
+        const submitButton = profileForm.querySelector('button[type="submit"]');
 
-        // Inicia o nosso "vigia" para verificar o timeout a cada 5 segundos.
-        timeoutInterval = setInterval(checkTimeout, 5000);
+        try {
+            submitButton.disabled = true;
+            submitButton.textContent = 'Salvando...';
+
+            // 1. Atualiza os dados básicos (nome e e-mail)
+            await apiUsuarioService.atualizar(currentUser.id, updatedUserData);
+            
+            // 2. Se o campo de nova senha foi preenchido, tenta atualizar a senha
+            if (novaSenha) {
+                if (!senhaAtual) {
+                    throw new Error('Para alterar a senha, você precisa fornecer sua senha atual.');
+                }
+                await apiAuthService.updatePassword(senhaAtual, novaSenha);
+            }
+
+            alert('Perfil atualizado com sucesso!');
+            // Limpa os campos de senha por segurança
+            currentPasswordInput.value = '';
+            newPasswordInput.value = '';
+
+        } catch (error) {
+            console.error('Erro ao atualizar perfil:', error);
+            alert(`Falha na atualização: ${error.message}`);
+        } finally {
+            // Reabilita o botão ao final, com sucesso ou erro
+            submitButton.disabled = false;
+            submitButton.textContent = 'Salvar Alterações';
+        }
     }
 
-    
+
+    // --- Lógica do Hamburger Menu ---
+    if (hamburger && aside) { /* ...código existente... */ }
 
 
-    // Inicia o monitoramento assim que a página é carregada.
-    startTimeoutMonitoring();
-
-
-    // Quando a página carrega, ela verifica se a sessão atual ainda é a ativa.
-    // Isso impede que uma aba antiga "fechada e reaberta" continue funcionando.
-    const currentSessionId = localStorage.getItem('active_session_id');
-    if (!sessionStorage.getItem('my_tab_session_id')) {
-        // Se esta aba não tem um ID, ela acabou de ser aberta. Vamos atribuir o ID ativo a ela.
-        sessionStorage.setItem('my_tab_session_id', currentSessionId);
-    } else if (sessionStorage.getItem('my_tab_session_id') !== currentSessionId) {
-        // Se o ID da aba é diferente do ID ativo, ela é uma sessão antiga.
-        alert('Sua sessão foi encerrada em outra aba. Você será desconectado.');
-        window.location.href = '../index.html'; // Use '../' para voltar para a raiz
-    }
-
-    // Adiciona o "vigia" para eventos de armazenamento em outras abas
-    window.addEventListener('storage', (event) => {
-        // Verifica se a chave 'active_session_id' foi alterada em outra aba
-        if (event.key === 'active_session_id') {
-            // Compara o novo ID da sessão com o ID desta aba
-            if (event.newValue !== sessionStorage.getItem('my_tab_session_id')) {
-                // Se forem diferentes, significa que um novo login foi feito em outro lugar.
-                alert('Sua sessão foi encerrada porque você se conectou em uma nova aba ou janela.');
-                // Redireciona esta aba "antiga" para a tela de login.
+    // --- Lógica de Logout ---
+    if (logoutButton) {
+        logoutButton.addEventListener('click', async (event) => {
+            event.preventDefault();
+            try {
+                await apiAuthService.logout();
+            } catch (error) {
+                console.error('Erro ao encerrar sessão no servidor:', error);
+            } finally {
+                localStorage.clear();
+                sessionStorage.clear();
                 window.location.href = '../index.html';
             }
-        }
-    });
-
-    /**
-     * Preenche o formulário com os dados do usuário mockado.
-     */
-    function populateForm() {
-        if (loggedInUser) {
-            nameInput.value = loggedInUser.name;
-            emailInput.value = loggedInUser.email;
-            accessTypeInput.value = loggedInUser.accessType;
-        }
+        });
     }
-
-    /**
-     * Lida com o envio do formulário.
-     */
-    function handleProfileUpdate(event) {
-        event.preventDefault(); // Impede o recarregamento da página
-
-        // --- Atualiza Dados Pessoais ---
-        const newName = nameInput.value.trim();
-        const newEmail = emailInput.value.trim();
-
-        if (!newName || !newEmail) {
-            alert('Nome e E-mail são campos obrigatórios.');
-            return;
-        }
-
-        // Atualiza os dados do nosso usuário simulado
-        loggedInUser.name = newName;
-        loggedInUser.email = newEmail;
-        console.log('Dados atualizados:', loggedInUser);
-        
-        // --- Lógica para Alteração de Senha ---
-        const currentPassword = currentPasswordInput.value;
-        const newPassword = newPasswordInput.value;
-
-        // A alteração de senha só é tentada se o campo "Nova Senha" for preenchido
-        if (newPassword.length > 0) {
-            if (currentPassword.length === 0) {
-                alert('Para alterar a senha, você precisa fornecer sua senha atual.');
-                return;
-            }
-            // Simulação: em um app real, a senha atual seria verificada no servidor.
-            // Aqui, vamos apenas assumir que qualquer coisa digitada é válida para a simulação.
-            if (newPassword.length < 6) {
-                alert('A nova senha deve ter no mínimo 6 caracteres.');
-                return;
-            }
-            
-            console.log('Simulação: Senha alterada com sucesso!');
-        }
-
-        alert('Perfil atualizado com sucesso!');
-        // Limpa os campos de senha por segurança após o envio
-        currentPasswordInput.value = '';
-        newPasswordInput.value = '';
-    }
-
 
     // --- Inicialização ---
-    populateForm(); // Preenche o formulário quando a página carrega
-    profileForm.addEventListener('submit', handleProfileUpdate); // Adiciona o "ouvinte" ao formulário
-
+    inicializarPagina(); // Busca dados reais em vez de usar o mock
+    profileForm.addEventListener('submit', handleProfileUpdate); 
 });

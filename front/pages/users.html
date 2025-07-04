@@ -61,7 +61,7 @@
 
                 <ul class="menu">
                     <li>
-                        <a href="./dasboard.html"><svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M240-200h120v-240h240v240h120v-360L480-740 240-560v360Zm-80 80v-480l320-240 320 240v480H520v-240h-80v240H160Zm320-350Z"/></svg>Assuntos não cadastrados</a>
+                        <a href="./dashboard.html"><svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M240-200h120v-240h240v240h120v-360L480-740 240-560v360Zm-80 80v-480l320-240 320 240v480H520v-240h-80v240H160Zm320-350Z"/></svg>Assuntos não cadastrados</a>
                     </li>
 
                     <li>
@@ -124,12 +124,11 @@
                         <label for="edit-user-email">E-mail</label>
                         <input type="email" id="edit-user-email" required>
                     </div>
-                    <div class="textfield">
+                     <div class="textfield">
                         <label for="edit-user-type">Tipo de Acesso</label>
                         <select id="edit-user-type">
-                            <option value="operador">Operador</option>
-                            <option value="administrador">Administrador</option>
-                        </select>
+                            <option value="" disabled selected>Carregando Perfis...</option>
+                            </select>
                     </div>
                     <div class="modal-actions">
                         <button type="submit" class="btn-save">Salvar</button>
@@ -138,6 +137,8 @@
                 </form>
             </div>
         </div>
-        <script src="../js/users.js"></script>
+        <script type="module" src="../js/services/apiPerfilService.js"></script>
+        <script type="module" src="../js/services/apiUsuarioService.js"></script>
+        <script type="module" src="../js/users.js"></script>
     </body>
 </html>
