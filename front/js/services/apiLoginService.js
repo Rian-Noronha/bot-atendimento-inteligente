@@ -1,29 +1,29 @@
-const API_URL = 'http://localhost:3000/api/auth';
+// 1. Importa a função de tratamento de erro do nosso módulo de utilitários
+import { handleResponseError } from '../utils/apiUtils.js';
+
 export const apiLoginService = {
     /**
      * Envia as credenciais para o backend para tentar fazer o login.
      * @param {string} email - O email do utilizador.
      * @param {string} senha - A senha do utilizador.
      * @returns {Promise<object>} - Uma promessa que resolve para os dados de sucesso (token e utilizador).
-     * @throws {Error} - Lança um erro se o login falhar.
      */
     async login(email, senha) {
-        const response = await fetch(`${API_URL}/login`, {
+        // 2. A URL agora é um caminho relativo, que será interceptado pelo proxy do Vite.
+        // O proxy irá redirecionar esta chamada para http://localhost:3000/api/auth/login
+        const response = await fetch(`/api/auth/login`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ email, senha }) // Envia os dados no formato que o backend espera
+            body: JSON.stringify({ email, senha })
         });
 
-        // Se a resposta não for 'ok' (ex: status 401, 403, 500), trata como um erro.
+        // 3. Usa a função de tratamento de erro padronizada.
         if (!response.ok) {
-            // Tenta ler a mensagem de erro do corpo da resposta da API
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.message || 'Falha na autenticação.');
+            await handleResponseError(response);
         }
 
-        // Se a resposta for 'ok' (status 200), retorna os dados (token e utilizador)
         return await response.json();
     }
 };
