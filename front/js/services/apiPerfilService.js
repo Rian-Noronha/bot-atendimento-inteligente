@@ -1,49 +1,34 @@
-const API_URL = 'http://localhost:3000/api';
-
-function getAuthHeaders() {
-    const token = localStorage.getItem('authToken');
-    const headers = {
-        'Content-Type': 'application/json',
-    };
-    if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-    }
-    return headers;
-}
-
-async function handleResponseError(response) {
-    if (response.status === 401) {
-        alert('Sua sessão expirou ou é inválida. Por favor, faça login novamente.');
-        localStorage.clear();
-        sessionStorage.clear();
-        window.location.href = '../index.html';
-        throw new Error('Não autorizado.');
-    }
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.message || 'Ocorreu um erro na requisição.');
-}
-
-// --- Serviço de API ---
+// 1. Importa as funções compartilhadas do nosso módulo de utilitários
+import { getAuthHeaders, handleResponseError } from '../utils/apiUtils.js';
 
 export const apiPerfilService = {
+    /**
+     * Busca todos os perfis, agora usando um caminho relativo e cabeçalhos de autenticação.
+     */
     async pegarTodos() {
-        const response = await fetch(`${API_URL}/perfis`, {
+        const response = await fetch(`/api/perfis`, {
             headers: getAuthHeaders() 
         });
         if (!response.ok) await handleResponseError(response);
         return await response.json();
     },
 
+    /**
+     * Busca um único perfil pelo seu ID.
+     */
     async pegarPorId(id) {
-        const response = await fetch(`${API_URL}/perfis/${id}`, {
+        const response = await fetch(`/api/perfis/${id}`, {
             headers: getAuthHeaders() 
         });
         if (!response.ok) await handleResponseError(response);
         return await response.json();
     },
 
+    /**
+     * Cria um novo perfil.
+     */
     async criar(dadosPerfil) {
-        const response = await fetch(`${API_URL}/perfis`, {
+        const response = await fetch(`/api/perfis`, {
             method: 'POST',
             headers: getAuthHeaders(), 
             body: JSON.stringify(dadosPerfil)
@@ -52,8 +37,11 @@ export const apiPerfilService = {
         return await response.json();
     },
 
+    /**
+     * Atualiza um perfil existente.
+     */
     async atualizar(id, novosDados) {
-        const response = await fetch(`${API_URL}/perfis/${id}`, {
+        const response = await fetch(`/api/perfis/${id}`, {
             method: 'PUT',
             headers: getAuthHeaders(), 
             body: JSON.stringify(novosDados)
@@ -62,8 +50,11 @@ export const apiPerfilService = {
         return await response.json();
     },
 
+    /**
+     * Deleta um perfil.
+     */
     async deletar(id) {
-        const response = await fetch(`${API_URL}/perfis/${id}`, {
+        const response = await fetch(`/api/perfis/${id}`, {
             method: 'DELETE',
             headers: getAuthHeaders() 
         });
