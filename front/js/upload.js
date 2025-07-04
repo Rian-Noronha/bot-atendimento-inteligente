@@ -1,11 +1,19 @@
-// 1. Importando todos os serviços de API e o novo serviço de armazenamento
+// js/upload.js
+
+// 1. Importando todos os serviços de API necessários
 import { apiCategoriaService } from './services/apiCategoriaService.js';
 import { apiPalavraChaveService } from './services/apiPalavraChaveService.js';
 import { apiKnowledgeLibraryService } from './services/apiKnowledgeLibraryService.js';
 import { apiAuthService } from './services/apiAuthService.js';
 import { storageService } from './services/storageService.js'; // Importa o serviço do Firebase
 
+// 2. Importando o gerenciador de sessão
+import { startSessionManagement, logoutUser } from './utils/sessionManager.js';
+
 document.addEventListener('DOMContentLoaded', () => {
+    // 3. Inicia toda a lógica de segurança (timeout, abas, etc.) com uma única chamada
+    startSessionManagement();
+
     // --- SELEÇÃO DE ELEMENTOS DO FORMULÁRIO E MENU ---
     const form = document.getElementById('upload-form');
     const uploadButton = document.getElementById('uploadButton');
@@ -27,49 +35,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const textSolutionTextarea = document.getElementById('text-solution');
     const arquivoInput = document.getElementById('arquivo-input');
 
-    // --- LÓGICA DE SESSÃO E TIMEOUT (Mantida) ---
-    const TIMEOUT_DURATION = 5 * 60 * 1000;
-    let timeoutInterval;
-    function resetTimeoutTimer() { localStorage.setItem('last_activity_time', Date.now()); }
-    async function logoutUser(isTimeout = false) {
-        clearInterval(timeoutInterval);
-        if (isTimeout) alert('Sua sessão expirou por inatividade. Por favor, faça login novamente.');
-        try { await apiAuthService.logout(); } catch (error) { console.error("Erro ao encerrar sessão no servidor:", error); }
-        finally {
-            localStorage.clear();
-            sessionStorage.clear();
-            window.location.href = '../index.html';
-        }
-    }
-    function checkTimeout() {
-        const lastActivityTime = parseInt(localStorage.getItem('last_activity_time') || '0', 10);
-        if (Date.now() - lastActivityTime > TIMEOUT_DURATION) logoutUser(true);
-    }
-    function startTimeoutMonitoring() {
-        const activityEvents = ['mousemove', 'mousedown', 'keypress', 'scroll', 'touchstart'];
-        activityEvents.forEach(event => window.addEventListener(event, resetTimeoutTimer));
-        timeoutInterval = setInterval(checkTimeout, 5000);
-    }
-    startTimeoutMonitoring();
-    const currentSessionId = localStorage.getItem('active_session_id');
-    if (!sessionStorage.getItem('my_tab_session_id')) {
-        sessionStorage.setItem('my_tab_session_id', currentSessionId);
-    } else if (sessionStorage.getItem('my_tab_session_id') !== currentSessionId) {
-        alert('Sua sessão foi encerrada em outra aba. Você será desconectado.');
-        logoutUser();
-    }
-    window.addEventListener('storage', (event) => {
-        if (event.key === 'active_session_id' && event.newValue !== sessionStorage.getItem('my_tab_session_id')) {
-            alert('Sua sessão foi encerrada porque você se conectou em uma nova aba ou janela.');
-            logoutUser();
-        }
-    });
+    // --- LÓGICA ESPECÍFICA DA PÁGINA ---
+
+    // Lógica do botão de logout (agora chama a função centralizada)
     if (logoutButton) {
-        logoutButton.addEventListener('click', (e) => { e.preventDefault(); logoutUser(); });
+        logoutButton.addEventListener('click', (e) => { 
+            e.preventDefault(); 
+            logoutUser(); 
+        });
     }
 
-    // --- LÓGICA DA INTERFACE E FORMULÁRIO ---
-
+    // Função que gerencia quais campos são obrigatórios
     function toggleRequiredAttributes(isManualMode) {
         themeSelect.required = isManualMode;
         subthemeSelect.required = isManualMode;
@@ -78,6 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
         arquivoInput.required = !isManualMode;
     }
 
+    // Alterna a visibilidade dos containers e a obrigatoriedade dos campos
     modoManualRadio.addEventListener('change', () => {
         manualContainer.style.display = 'block';
         automaticoContainer.style.display = 'none';

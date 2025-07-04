@@ -1,11 +1,20 @@
-document.addEventListener('DOMContentLoaded', () => {
+// 1. Importa o nosso novo gerenciador de sessão centralizado
+// Ele cuidará do timeout, da verificação de abas e do logout seguro.
+import { startSessionManagement } from './utils/sessionManager.js';
+import { apiAuthService } from './services/apiAuthService.js'; // Ainda necessário para o logout manual
 
-    // --- SELEÇÃO DE ELEMENTOS HTML ---
+document.addEventListener('DOMContentLoaded', () => {
+    // 2. Inicia toda a lógica de segurança com uma única chamada
+    startSessionManagement();
+
+    // --- SELEÇÃO DE ELEMENTOS ESPECÍFICOS DA PÁGINA ---
     const startDateInput = document.getElementById('start-date');
     const endDateInput = document.getElementById('end-date');
     const generateReportBtn = document.getElementById('generate-report-btn');
     const exportPdfBtn = document.getElementById('export-pdf-btn');
-    
+    const logoutButton = document.getElementById('logout-btn'); // Supondo que a página de relatório tenha um botão de sair
+
+    // Elementos de estatísticas
     const totalSubjectsEl = document.getElementById('total-subjects');
     const dailyAverageEl = document.getElementById('daily-average');
     const topCategoryEl = document.getElementById('top-category');
@@ -17,18 +26,35 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let categoryChart = null;
 
-    // --- CONFIGURAÇÃO DAS DATAS PADRÃO ---
+    // --- LÓGICA ESPECÍFICA DA PÁGINA DE RELATÓRIOS ---
+
+    // Lógica do botão de logout (mantida para garantir a chamada à API)
+    if (logoutButton) {
+        logoutButton.addEventListener('click', async (e) => {
+            e.preventDefault();
+            try {
+                await apiAuthService.logout();
+            } catch (error) {
+                console.error("Erro ao notificar o servidor sobre o logout:", error);
+            } finally {
+                // A lógica de limpar o storage e redirecionar já está no sessionManager,
+                // mas podemos garantir que aconteça aqui para uma resposta imediata.
+                localStorage.clear();
+                sessionStorage.clear();
+                window.location.href = '../index.html';
+            }
+        });
+    }
+
+    // Configuração das datas padrão
     const today = new Date().toISOString().split('T')[0];
     endDateInput.value = today;
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     startDateInput.value = thirtyDaysAgo.toISOString().split('T')[0];
 
-    // --- Lógica de Timeout e Sessão (mantida) ---
-    // ... (seu código de timeout e sessão pode ser mantido aqui)
-
     /**
-     * Função principal que filtra os dados e chama as funções de renderização.
+     * Função principal que filtra os dados do localStorage e chama as funções de renderização.
      */
     function generateReport() {
         const startDate = startDateInput.value ? new Date(startDateInput.value) : null;
@@ -70,16 +96,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         exportPdfBtn.disabled = false;
 
-        const categoryCounts = subjects.reduce((acc, { tema }) => {
-            acc[tema] = (acc[tema] || 0) + 1;
-            return acc;
-        }, {});
-
-        const subcategoryCounts = subjects.reduce((acc, { microtema }) => {
-            acc[microtema] = (acc[microtema] || 0) + 1;
-            return acc;
-        }, {});
-
+        // Lógica de cálculo das estatísticas
+        const categoryCounts = subjects.reduce((acc, { tema }) => { acc[tema] = (acc[tema] || 0) + 1; return acc; }, {});
+        const subcategoryCounts = subjects.reduce((acc, { microtema }) => { acc[microtema] = (acc[microtema] || 0) + 1; return acc; }, {});
         const weekdayCounts = subjects.reduce((acc, { approvedDate }) => {
             const dayIndex = new Date(approvedDate).getDay();
             acc[dayIndex] = (acc[dayIndex] || 0) + 1;
@@ -98,6 +117,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const peakWeekdayIndex = findTopItem(weekdayCounts);
         const peakWeekday = weekdays[peakWeekdayIndex] || 'N/A';
 
+        // Atualização dos KPIs na tela
         totalSubjectsEl.textContent = subjects.length;
         dailyAverageEl.textContent = dailyAverage;
         topCategoryEl.textContent = topCategory;
@@ -108,14 +128,8 @@ document.addEventListener('DOMContentLoaded', () => {
         renderDetailedList(subjects);
     }
     
-    /**
-     * ✅ FUNÇÃO ADICIONADA
-     * Renderiza o gráfico de pizza com a distribuição por categoria.
-     */
     function renderCategoryChart(categoryData) {
-        if (categoryChart) {
-            categoryChart.destroy();
-        }
+        if (categoryChart) categoryChart.destroy();
         const chartLabels = Object.keys(categoryData);
         const chartValues = Object.values(categoryData);
         categoryChart = new Chart(chartCanvas, {
@@ -130,19 +144,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     borderWidth: 2
                 }]
             },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: { position: 'top' }
-                }
-            }
+            options: { responsive: true, plugins: { legend: { position: 'top' } } }
         });
     }
 
-    /**
-     * ✅ FUNÇÃO ADICIONADA
-     * Renderiza a lista detalhada de temas e micro-temas.
-     */
     function renderDetailedList(subjects) {
         const themeCounts = subjects.reduce((acc, { tema, microtema }) => {
             const themeKey = `${tema} > ${microtema}`;
@@ -150,6 +155,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return acc;
         }, {});
         const sortedThemes = Object.entries(themeCounts).sort(([, a], [, b]) => b - a);
+        reportResultsList.innerHTML = ''; // Limpa a lista antes de renderizar
         sortedThemes.forEach(([theme, count]) => {
             const [tema, microtema] = theme.split(' > ');
             const itemElement = document.createElement('div');
@@ -164,20 +170,13 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    /**
-     * ✅ FUNÇÃO ADICIONADA
-     * Exporta a área do relatório para um arquivo PDF.
-     */
     function exportToPdf() {
         const reportArea = document.querySelector('.report-container'); 
         const originalButtonText = exportPdfBtn.innerHTML;
         exportPdfBtn.disabled = true;
         exportPdfBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Exportando...';
 
-        html2canvas(reportArea, {
-            scale: 2, 
-            useCORS: true 
-        }).then(canvas => {
+        html2canvas(reportArea, { scale: 2, useCORS: true }).then(canvas => {
             const imgData = canvas.toDataURL('image/png');
             const pdf = new jspdf.jsPDF('p', 'mm', 'a4');
             const pdfWidth = pdf.internal.pageSize.getWidth();

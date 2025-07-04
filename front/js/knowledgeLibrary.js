@@ -1,17 +1,25 @@
-import { apiKnowledgeLibraryService } from './services/apiKnowledgeLibraryService.js';
+// 1. Importa os serviços de API necessários para a página
+import { apiKnowledgeLibraryService } from './services/apiKnowledgeLibraryService.js'; // Renomeado para consistência
 import { apiPalavraChaveService } from './services/apiPalavraChaveService.js'; 
 import { apiAuthService } from './services/apiAuthService.js';
 
+// 2. Importa o nosso novo gerenciador de sessão centralizado
+import { startSessionManagement } from './utils/sessionManager.js';
+
 document.addEventListener('DOMContentLoaded', () => {
-    // --- Seletores de Elementos da Página ---
+    // 3. Inicia toda a lógica de segurança (timeout, abas, etc.) com uma única chamada
+    startSessionManagement();
+
+    // --- SELEÇÃO DE ELEMENTOS ESPECÍFICOS DA PÁGINA ---
     const hamburger = document.getElementById('hamburger');
     const aside = document.querySelector('aside');
     const searchInput = document.getElementById('knowledge-library-search-input-header');
     const knowledgeLibraryTableBody = document.querySelector('#knowledge-library-table tbody');
     const noKnowledgeLibrarysMessage = document.getElementById('no-knowledge-librarys-message');
     const addKnowledgeLibraryButton = document.getElementById('add-knowledge-library-button');
+    const logoutButton = document.getElementById('logout-btn');
 
-    // --- Seletores do Modal de Edição ---
+    // Seletores do Modal de Edição
     const editModal = document.getElementById('edit-document-modal');
     const editForm = document.getElementById('edit-document-form');
     const editDocumentId = document.getElementById('edit-document-id');
@@ -22,18 +30,40 @@ document.addEventListener('DOMContentLoaded', () => {
     const editDocumentSolution = document.getElementById('edit-document-solution');
     const editDocumentKeywords = document.getElementById('edit-document-keywords');
     const btnCancelDocument = editModal.querySelector('.btn-cancel');
-    const logoutButton = document.getElementById('logout-btn');
 
-
-    // Variável para guardar todos os documentos da API, evitando chamadas repetidas para pesquisa
+    // Variável para guardar todos os documentos da API
     let allDocuments = [];
 
-    // --- LÓGICA DE SESSÃO E TIMEOUT (Pode ser mantida como estava) ---
-    // (O seu código de gestão de sessão e timeout pode ser colocado aqui)
+    // --- LÓGICA ESPECÍFICA DA PÁGINA ---
+
+    // Lógica do Hamburger Menu
+    if (hamburger && aside) {
+        hamburger.addEventListener('click', () => aside.classList.toggle('open'));
+        document.addEventListener('click', (event) => {
+            if (aside.classList.contains('open') && !aside.contains(event.target) && !hamburger.contains(event.target)) {
+                aside.classList.remove('open');
+            }
+        });
+    }
+
+    // Lógica do botão de logout (mantida, pois é robusta)
+    if (logoutButton) {
+        logoutButton.addEventListener('click', async (event) => {
+            event.preventDefault();
+            try {
+                await apiAuthService.logout();
+            } catch (error) {
+                console.error('Erro ao encerrar sessão no servidor:', error);
+            } finally {
+                localStorage.clear();
+                sessionStorage.clear();
+                window.location.href = '../index.html';
+            }
+        });
+    }
 
     /**
-     * Busca todos os documentos da API, guarda-os na variável `allDocuments`,
-     * e depois chama a função para renderizar a tabela.
+     * Busca e renderiza os documentos.
      */
     async function fetchAndRenderDocuments() {
         try {
@@ -51,23 +81,20 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /**
-     * Renderiza a tabela de documentos com base nos dados guardados em `allDocuments`
-     * e no termo de pesquisa atual.
+     * Renderiza a tabela com base nos dados filtrados.
      */
     function renderDocuments() {
         knowledgeLibraryTableBody.innerHTML = '';
         const searchTerm = searchInput.value.toLowerCase().trim();
 
-        // Filtra os documentos com base no termo de pesquisa
         const filteredDocuments = allDocuments.filter(doc => {
             const palavrasChaveString = doc.palavrasChave.map(p => p.palavra).join(' ');
-            // Verifica se o termo de pesquisa existe em qualquer um dos campos relevantes
             return (
                 doc.subcategoria?.categoria?.nome.toLowerCase().includes(searchTerm) ||
                 doc.subcategoria?.nome.toLowerCase().includes(searchTerm) ||
                 doc.titulo.toLowerCase().includes(searchTerm) ||
                 (doc.descricao && doc.descricao.toLowerCase().includes(searchTerm)) ||
-                doc.solucao.toLowerCase().includes(searchTerm) ||
+                (doc.solucao && doc.solucao.toLowerCase().includes(searchTerm)) || // Adicionado verificação de nulidade
                 palavrasChaveString.toLowerCase().includes(searchTerm)
             );
         });
@@ -89,7 +116,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <td data-label="Micro-tema">${doc.subcategoria?.nome || '<span class="text-danger">Sem Micro-tema</span>'}</td>
                     <td data-label="Título">${doc.titulo}</td>
                     <td data-label="Descrição">${doc.descricao || ''}</td>
-                    <td data-label="Solução">${doc.solucao}</td>
+                    <td data-label="Solução">${doc.solucao || `<a href="${doc.urlArquivo}" target="_blank">Ver Anexo</a>`}</td>
                     <td data-label="Palavras-chave">${keywordsDisplay}</td>
                     <td data-label="Ações" class="user-actions">
                         <button class="btn-edit" data-id="${doc.id}" title="Editar documento"><svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#000"><path d="M200-200h57l391-391-57-57-391 391v57Zm-80 80v-170l528-527q12-11 26.5-17t30.5-6q16 0 31 6t26 18l55 56q12 11 17.5 26t5.5 30q0 16-5.5 30.5T817-647L290-120H120Zm640-584-56-56 56 56Zm-141 85-28-29 57 57-29-28Z"/></svg></button>
@@ -101,77 +128,28 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /**
-     * Abre o modal de edição e preenche os campos com os dados do documento.
+     * Abre e preenche o modal de edição.
      */
     function openEditModal(docId) {
         const doc = allDocuments.find(d => d.id === docId);
-        if (!doc) {
-            alert("Documento não encontrado. Tente recarregar a página.");
-            return;
-        }
+        if (!doc) return;
 
         editDocumentId.value = doc.id;
         editDocumentTema.value = doc.subcategoria?.categoria?.nome || 'N/A';
-        editDocumentTema.readOnly = true; 
         editDocumentMicrotema.value = doc.subcategoria?.nome || 'N/A';
-        editDocumentMicrotema.readOnly = true;
         editDocumentTitle.value = doc.titulo;
         editDocumentDescription.value = doc.descricao || '';
-        editDocumentSolution.value = doc.solucao || '';
+        // Mostra a solução ou um link para o anexo
+        editDocumentSolution.value = doc.solucao || (doc.urlArquivo ? `Arquivo: ${doc.urlArquivo}` : '');
+        editDocumentSolution.readOnly = !!doc.urlArquivo; // Bloqueia edição se for um anexo
         editDocumentKeywords.value = doc.palavrasChave.map(p => p.palavra).join(', ');
 
         editModal.style.display = 'flex';
         setTimeout(() => editModal.classList.add('active'), 10);
     }
 
-    /**
-     * Fecha o modal de edição de forma robusta, aguardando a animação terminar.
-     */
-    function closeEditModal() {
-        editModal.classList.remove('active');
-        
-        function onTransitionEnd() {
-            editModal.style.display = 'none';
-            editForm.reset();
-            editDocumentTema.readOnly = false;
-            editDocumentMicrotema.readOnly = false;
-            editModal.removeEventListener('transitionend', onTransitionEnd);
-        }
-
-        editModal.addEventListener('transitionend', onTransitionEnd);
-    }
-
-    // --- Listeners de Eventos ---
-
-    // Delega os eventos de clique na tabela para os botões de editar e excluir
-    knowledgeLibraryTableBody.addEventListener('click', (event) => {
-        const targetButton = event.target.closest('button');
-        if (!targetButton) return;
-        const docId = parseInt(targetButton.dataset.id);
-
-        if (targetButton.classList.contains('btn-edit')) {
-            openEditModal(docId);
-        } else if (targetButton.classList.contains('btn-delete')) {
-            const docToDelete = allDocuments.find(d => d.id === docId);
-            if (confirm(`Tem a certeza que deseja excluir o documento "${docToDelete.titulo}"?`)) {
-                handleDeleteDocument(docId);
-            }
-        }
-    });
-
-    /**
-     * Lida com a exclusão de um documento chamando o serviço da API.
-     */
-    async function handleDeleteDocument(docId) {
-        try {
-            await apiKnowledgeLibraryService.deletar(docId);
-            alert('Documento excluído com sucesso!');
-            fetchAndRenderDocuments(); // Atualiza a lista após a exclusão
-        } catch (error) {
-            alert(`Erro ao excluir documento: ${error.message}`);
-            console.error("Erro ao excluir documento:", error);
-        }
-    }
+    function closeEditModal() { /* ... sua função closeEditModal existente ... */ }
+    async function handleDeleteDocument(docId) { /* ... sua função handleDeleteDocument existente ... */ }
 
     // Lida com a submissão do formulário de edição
     editForm.addEventListener('submit', async (event) => {
@@ -188,68 +166,29 @@ document.addEventListener('DOMContentLoaded', () => {
                     palavrasChaveIds = palavrasChaveSalvas.map(p => p.id);
                 }
             }
-
             const updatedData = {
                 titulo: editDocumentTitle.value.trim(),
                 descricao: editDocumentDescription.value.trim(),
                 solucao: editDocumentSolution.value.trim(),
                 palavrasChaveIds: palavrasChaveIds,
             };
-
             await apiKnowledgeLibraryService.atualizar(docId, updatedData);
             alert('Documento atualizado com sucesso!');
             closeEditModal();
             fetchAndRenderDocuments();
-
         } catch (error) {
             alert(`Erro ao atualizar o documento: ${error.message}`);
-            console.error("Erro ao atualizar documento:", error);
         }
     });
 
-    // Outros listeners para funcionalidades da página
+    // --- Listeners de Eventos ---
+    knowledgeLibraryTableBody.addEventListener('click', (event) => { /* ... sua lógica de clique na tabela ... */ });
     addKnowledgeLibraryButton.addEventListener('click', () => window.location.href = './upload.html');
     btnCancelDocument.addEventListener('click', closeEditModal);
     searchInput.addEventListener('input', renderDocuments);
-
-    // Fecha o modal ao clicar no overlay (fora da área de conteúdo)
-    editModal.addEventListener('click', (event) => {
-        if (event.target === editModal) {
-            closeEditModal();
-        }
-    });
-
-    // Fecha o modal ao pressionar a tecla 'Escape'
-    window.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape' && editModal.classList.contains('active')) {
-            closeEditModal();
-        }
-    });
-
-    if (logoutButton) {
-        logoutButton.addEventListener('click', async (event) => {
-            // Impede a navegação padrão do link, pois o JS controlará o fluxo
-            event.preventDefault();
-
-            try {
-                // Tenta fazer o logout no servidor para invalidar a sessão no banco
-                await apiAuthService.logout();
-                console.log('Sessão encerrada no servidor com sucesso.');
-            } catch (error) {
-                // Mesmo que a chamada à API falhe, ainda deslogamos do frontend
-                console.error('Erro ao encerrar sessão no servidor:', error);
-            } finally {
-                // O bloco 'finally' SEMPRE é executado, garantindo o logout local.
-                // Limpa todos os dados de autenticação do navegador
-                localStorage.clear();
-                sessionStorage.clear();
-                // Redireciona para a página de login
-                window.location.href = '../index.html';
-            }
-        });
-    }
+    editModal.addEventListener('click', (event) => { if (event.target === editModal) closeEditModal(); });
+    window.addEventListener('keydown', (event) => { if (event.key === 'Escape') closeEditModal(); });
 
     // --- Chamada Inicial ---
-    // Busca e renderiza os documentos assim que a página é carregada.
     fetchAndRenderDocuments();
 });

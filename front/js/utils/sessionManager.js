@@ -3,7 +3,7 @@ import { apiAuthService } from '../services/apiAuthService.js';
 
 // --- CONFIGURAÇÕES ---
 // Lembrar de voltar para (5 * 60 * 1000) para produção.
-const TIMEOUT_DURATION = 20 * 1000; // 20 segundos
+const TIMEOUT_DURATION = 5 * 1000; // 20 segundos
 let timeoutInterval;
 
 /**
@@ -11,7 +11,7 @@ let timeoutInterval;
  * É chamada tanto por inatividade quanto por ação manual ou de outra aba.
  * @param {boolean} isTimeout - Indica se o logout foi por inatividade para mostrar a mensagem correta.
  */
-async function logoutUser(isTimeout = false) {
+export async function logoutUser(isTimeout = false) {
     // Para o monitoramento para evitar chamadas repetidas
     clearInterval(timeoutInterval);
     
