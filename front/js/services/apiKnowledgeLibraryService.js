@@ -2,7 +2,7 @@
 import { getAuthHeaders, handleResponseError } from '../utils/apiUtils.js';
 
 // Padronizando o nome para apiDocumentoService para maior clareza
-export const apiDocumentoService = {
+export const apiKnowledgeLibraryService = {
     /**
      * Busca todos os documentos, agora usando um caminho relativo e cabeçalhos centralizados.
      */
