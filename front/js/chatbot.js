@@ -1,7 +1,15 @@
+// 1. Importa os serviços de API necessários para a página
 import { apiChatService } from './services/apiChatService.js';
 import { apiCategoriaService } from './services/apiCategoriaService.js';
 
+// 2. Importa o nosso novo gerenciador de sessão centralizado
+import { startSessionManagement, logoutUser } from './utils/sessionManager.js';
+
 document.addEventListener('DOMContentLoaded', () => {
+    // 3. Inicia toda a lógica de segurança (timeout, abas, etc.) com uma única chamada
+    startSessionManagement();
+
+    // --- SELEÇÃO DE ELEMENTOS ESPECÍFICOS DA PÁGINA ---
     const themeSelect = document.getElementById('select-theme');
     const subthemeSelect = document.getElementById('select-subtheme');
     const inputPergunta = document.getElementById('input-pergunta');
@@ -11,18 +19,26 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnFeedbackSim = document.getElementById('btn-feedback-sim');
     const btnFeedbackNao = document.getElementById('btn-feedback-nao');
     const feedbackStatus = document.getElementById('feedback-status');
+    const logoutButton = document.getElementById('logout-btn'); // Supondo que a página do chat tenha um botão de sair
 
     let currentSessaoId = null;
-    let currentRespostaId = null; // guardar para o feedback
+    let currentRespostaId = null;
 
+    // --- LÓGICA ESPECÍFICA DA PÁGINA ---
+
+    // Lógica do botão de logout (agora chama a função centralizada)
+    if (logoutButton) {
+        logoutButton.addEventListener('click', (e) => {
+            e.preventDefault();
+            logoutUser(); 
+        });
+    }
+
+    /**
+     * Inicia a sessão de chat e carrega os temas iniciais.
+     * A verificação de token agora é feita pelo sessionManager.
+     */
     async function inicializarChat() {
-        const token = localStorage.getItem('authToken');
-        if (!token) {
-            alert("A sua sessão não foi encontrada. Por favor, inicie sessão.");
-            window.location.href = '../index.html';
-            return;
-        }
-
         try {
             const response = await apiChatService.iniciarSessao();
             currentSessaoId = response.sessao.id;
@@ -32,7 +48,12 @@ document.addEventListener('DOMContentLoaded', () => {
             popularTemas(temas);
         } catch (error) {
             console.error("Erro ao inicializar o chat:", error);
-            answerArea.value = "Erro ao iniciar o chat. Tente recarregar a página.";
+            answerArea.value = "Erro ao iniciar o chat. A sua sessão pode ter expirado. Tente recarregar a página.";
+            // Desabilita os controles se a inicialização falhar
+            themeSelect.disabled = true;
+            subthemeSelect.disabled = true;
+            inputPergunta.disabled = true;
+            askButton.disabled = true;
         }
     }
 
@@ -49,6 +70,7 @@ document.addEventListener('DOMContentLoaded', () => {
         subthemeSelect.innerHTML = '<option value="" disabled selected>Buscando...</option>';
         subthemeSelect.disabled = true;
         inputPergunta.disabled = true;
+        askButton.disabled = true;
 
         if (categoriaId) {
             try {
@@ -75,7 +97,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         askButton.disabled = true;
-        answerArea.value = 'Buscando...';
+        answerArea.value = 'Buscando a melhor resposta...';
         feedbackSection.style.display = 'none';
         feedbackStatus.textContent = '';
         btnFeedbackSim.disabled = false;
@@ -85,7 +107,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const dadosConsulta = { pergunta, sessao_id: currentSessaoId, subcategoria_id };
             const respostaCompleta = await apiChatService.criarConsultaEObterResposta(dadosConsulta);
 
-            // A resposta do backend já contém a resposta da IA e o ID para o feedback
             currentRespostaId = respostaCompleta.resposta_id;
             answerArea.value = respostaCompleta.answer;
             feedbackSection.style.display = 'block';
@@ -98,7 +119,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    
     async function handleFeedback(foiUtil) {
         if (!currentRespostaId) return;
         feedbackStatus.textContent = 'A enviar feedback...';
@@ -130,7 +150,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     askButton.addEventListener('click', handleAsk);
     inputPergunta.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') handleAsk();
+        if (e.key === 'Enter') {
+            e.preventDefault(); // Impede o envio de formulário se estiver dentro de um
+            handleAsk();
+        }
     });
 
     btnFeedbackSim.addEventListener('click', () => handleFeedback(true));
