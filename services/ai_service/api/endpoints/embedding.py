@@ -3,7 +3,7 @@ from fastapi import APIRouter, HTTPException
 from schemas.document import EmbedRequest
 from core.models import embeddings_model # Importa o modelo já inicializado
 
-# Cria um "roteador" para este endpoint específico
+# Cria um "roteador" 
 router = APIRouter()
 
 @router.post("/create-embedding", summary="Gera um embedding para um texto")

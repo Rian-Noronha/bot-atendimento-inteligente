@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnSimCadastrar = document.getElementById('btn-sim-cadastrar');
     const btnNaoDescartar = document.getElementById('btn-nao-descartar');
     const logoutButton = document.getElementById('logout-btn');
-    const TIMEOUT_DURATION = 5 * 60 * 1000;
+    const TIMEOUT_DURATION = 20 * 1000;
     let timeoutInterval; 
 
 

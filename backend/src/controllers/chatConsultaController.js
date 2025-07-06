@@ -42,7 +42,7 @@ exports.criarConsultaEObterResposta = async (req, res) => {
             subcategoria_id
         }, { transaction: t });
 
-        // Cria o registo da resposta, associando-a à consulta que acabámos de criar
+        // Cria o registo da resposta, associando-a à consulta que acabou de ser criada
         const novaResposta = await ChatResposta.create({
             texto_resposta: textoRespostaIA,
             consulta_id: novaConsulta.id
