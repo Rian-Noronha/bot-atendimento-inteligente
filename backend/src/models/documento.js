@@ -1,7 +1,6 @@
 'use strict';
 const { Model } = require('sequelize');
 module.exports = (sequelize, DataTypes) => {
-  // CORRIGIDO: Nome da classe para o singular
   class Documento extends Model {
     static associate(models) {
       this.belongsTo(models.Subcategoria, {
@@ -12,6 +11,11 @@ module.exports = (sequelize, DataTypes) => {
         through: 'documentos_palavras_chave',
         foreignKey: 'documento_id',
         as: 'palavrasChave'
+      });
+
+      this.hasMany(models.ChatResposta, {
+        foreignKey: 'documento_fonte', 
+        as: 'respostas'              
       });
     }
   }
@@ -28,7 +32,7 @@ module.exports = (sequelize, DataTypes) => {
     }
   }, {
     sequelize,
-    modelName: 'Documento', // CORRIGIDO: Nome do model para o singular
+    modelName: 'Documento',
     tableName: 'documentos'
   });
   return Documento;

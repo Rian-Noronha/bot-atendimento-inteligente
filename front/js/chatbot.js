@@ -1,4 +1,3 @@
-// 1. Importa os serviços de API necessários para a página
 import { apiChatService } from './services/apiChatService.js';
 import { apiCategoriaService } from './services/apiCategoriaService.js';
 
@@ -19,24 +18,28 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnFeedbackSim = document.getElementById('btn-feedback-sim');
     const btnFeedbackNao = document.getElementById('btn-feedback-nao');
     const feedbackStatus = document.getElementById('feedback-status');
-    const logoutButton = document.getElementById('logout-btn'); // Supondo que a página do chat tenha um botão de sair
+    const logoutButton = document.getElementById('logout-btn');
 
     let currentSessaoId = null;
     let currentRespostaId = null;
 
     // --- LÓGICA ESPECÍFICA DA PÁGINA ---
 
-    // Lógica do botão de logout (agora chama a função centralizada)
+   
     if (logoutButton) {
         logoutButton.addEventListener('click', (e) => {
             e.preventDefault();
+            // Primeiro, garante que a sessão de chat seja encerrada
+            if (currentSessaoId) {
+                apiChatService.encerrarSessao(currentSessaoId);
+            }
+            // Em seguida, chama a função de logout principal
             logoutUser(); 
         });
     }
 
     /**
      * Inicia a sessão de chat e carrega os temas iniciais.
-     * A verificação de token agora é feita pelo sessionManager.
      */
     async function inicializarChat() {
         try {
@@ -57,6 +60,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // As funções abaixo permanecem exatamente as mesmas
     function popularTemas(temas) {
         themeSelect.innerHTML = '<option value="" disabled selected>Selecione um tema...</option>';
         temas.forEach(tema => {
@@ -64,7 +68,6 @@ document.addEventListener('DOMContentLoaded', () => {
             themeSelect.add(option);
         });
     }
-
     async function handleThemeChange() {
         const categoriaId = themeSelect.value;
         subthemeSelect.innerHTML = '<option value="" disabled selected>Buscando...</option>';
@@ -87,7 +90,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     }
-
     async function handleAsk() {
         const pergunta = inputPergunta.value.trim();
         const subcategoria_id = subthemeSelect.value;
@@ -118,7 +120,6 @@ document.addEventListener('DOMContentLoaded', () => {
             askButton.disabled = false;
         }
     }
-
     async function handleFeedback(foiUtil) {
         if (!currentRespostaId) return;
         feedbackStatus.textContent = 'A enviar feedback...';
@@ -151,13 +152,21 @@ document.addEventListener('DOMContentLoaded', () => {
     askButton.addEventListener('click', handleAsk);
     inputPergunta.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
-            e.preventDefault(); // Impede o envio de formulário se estiver dentro de um
+            e.preventDefault();
             handleAsk();
         }
     });
 
     btnFeedbackSim.addEventListener('click', () => handleFeedback(true));
     btnFeedbackNao.addEventListener('click', () => handleFeedback(false));
+
+    //  listener para encerrar a sessão quando o usuário fecha/sai da página.
+    window.addEventListener('beforeunload', () => {
+        // Verifica se existe uma sessão de chat ativa para encerrar
+        if (currentSessaoId) {
+            apiChatService.encerrarSessao(currentSessaoId);
+        }
+    });
 
     // --- Inicialização ---
     inicializarChat();

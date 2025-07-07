@@ -14,6 +14,7 @@ const chatRespostaRoutes = require('./routes/chatRespostaRoutes');
 const assuntoPendenteRoutes = require('./routes/assuntoPendenteRoutes');
 const feedbackRoutes = require('./routes/feedbackRoutes');
 const authRoutes= require('./routes/authRoutes');
+const relatorioRoutes = require('./routes/relatorioRoutes');
 
 
 
@@ -40,7 +41,7 @@ app.use('/api', chatRespostaRoutes);
 app.use('/api', assuntoPendenteRoutes);
 app.use('/api', feedbackRoutes);
 app.use('/api/auth', authRoutes);
-
+app.use('/api/relatorios', relatorioRoutes);
 
 
 module.exports = app;

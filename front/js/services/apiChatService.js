@@ -42,5 +42,27 @@ export const apiChatService = {
         });
         if (!response.ok) await handleResponseError(response);
         return await response.json();
+    },
+
+    /**
+     * ✅ FUNÇÃO ADICIONADA: Encerra a sessão de chat ativa de forma segura.
+     * Esta função é chamada quando o usuário sai da página do chat.
+     * @param {number} sessaoId - O ID da sessão a ser encerrada.
+     */
+    encerrarSessao(sessaoId) {
+        // A URL corresponde à rota PUT definida no seu backend
+        const url = `/api/chat/encerrar-sessao/${sessaoId}`;
+
+        // 'fetch' com 'keepalive: true' é a forma moderna e segura de garantir o envio
+        // de uma requisição final, pois permite o uso do método PUT e o envio 
+        // de cabeçalhos de autorização, fazendo com que o middleware 'protect' funcione.
+        fetch(url, {
+            method: 'PUT',
+            headers: getAuthHeaders(),
+            keepalive: true // A mágica está aqui!
+        });
+        
+        // Não é necessário .then() ou await, pois a intenção é apenas "disparar e esquecer"
+        // a requisição enquanto a página fecha.
     }
 };

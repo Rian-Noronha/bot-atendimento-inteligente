@@ -27,12 +27,15 @@ exports.criarConsultaEObterResposta = async (req, res) => {
         // --- Passo 1: Interação com o Serviço de IA ---
         console.log(`[Node.js] Repassando pergunta para a IA: "${pergunta}"`);
         const responseIA = await axios.post(AI_SERVICE_ASK_URL, { question: pergunta });
+
+        // ✅ CORREÇÃO: Extrai tanto a resposta quanto o ID do documento fonte.
         const textoRespostaIA = responseIA.data.answer;
+        const documentoFonteId = responseIA.data.source_document_id; // Espera este novo campo da IA
 
         if (!textoRespostaIA) {
-            throw new Error("O serviço de IA não retornou uma resposta válida.");
+            throw new Error("O serviço de IA não retornou uma resposta de texto válida.");
         }
-        console.log(`[Node.js] Resposta recebida da IA.`);
+        console.log(`[Node.js] Resposta recebida. Documento fonte ID: ${documentoFonteId || 'Nenhum'}`);
         
         // --- Passo 2: Salvando no Banco de Dados ---
         // Cria o registo da consulta (a pergunta do utilizador)
@@ -42,10 +45,12 @@ exports.criarConsultaEObterResposta = async (req, res) => {
             subcategoria_id
         }, { transaction: t });
 
-        // Cria o registo da resposta, associando-a à consulta que acabámos de criar
+        // ✅ CORREÇÃO: Passa o 'documentoFonteId' ao criar a resposta.
+        // Se for null, o Sequelize salvará o campo como nulo, o que está correto.
         const novaResposta = await ChatResposta.create({
             texto_resposta: textoRespostaIA,
-            consulta_id: novaConsulta.id
+            consulta_id: novaConsulta.id,
+            documento_fonte: documentoFonteId
         }, { transaction: t });
 
         // Se tudo correu bem, confirma a transação
