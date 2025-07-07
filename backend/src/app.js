@@ -1,7 +1,6 @@
 const express = require('express');
 const cors = require('cors');
 
-//organizando as rotas
 const perfilRoutes = require('./routes/perfilRoutes');
 const categoriaRoutes = require('./routes/categoriaRoutes');
 const palavraChaveRoutes = require('./routes/palavraChaveRoutes');
@@ -16,11 +15,9 @@ const feedbackRoutes = require('./routes/feedbackRoutes');
 const authRoutes= require('./routes/authRoutes');
 const relatorioRoutes = require('./routes/relatorioRoutes');
 
-
-
 const app = express();
 const corsOptions = {
-  origin: '*', // Permite qualquer origem.
+  origin: '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 };
@@ -28,19 +25,27 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json());
 
+// Rota de autenticação (login, logout, etc.)
+app.use('/api/auth', authRoutes);
 
-app.use('/api', perfilRoutes);
-app.use('/api', categoriaRoutes);
-app.use('/api', palavraChaveRoutes);
-app.use('/api', usuarioRoutes);
-app.use('/api', subcategoriaRoutes);
-app.use('/api', documentoRoutes);
+// Rotas de gerenciamento de entidades (CRUDs)
+app.use('/api/usuarios', usuarioRoutes);
+app.use('/api/perfis', perfilRoutes);
+app.use('/api/documentos', documentoRoutes);
+app.use('/api/categorias', categoriaRoutes);
+app.use('/api/subcategorias', subcategoriaRoutes);
+app.use('/api/palavras-chave', palavraChaveRoutes);
+app.use('/api/feedbacks', feedbackRoutes);
+app.use('/api/assuntos-pendentes', assuntoPendenteRoutes);
+
+// Rotas relacionadas ao fluxo do Chatbot
+// Estas rotas já contêm o caminho completo internamente (ex: '/chat/iniciar-sessao'),
+// então montá-las sob '/api' está correto.
 app.use('/api', chatSessaoRoutes);
 app.use('/api', chatConsultaRoutes);
 app.use('/api', chatRespostaRoutes);
-app.use('/api', assuntoPendenteRoutes);
-app.use('/api', feedbackRoutes);
-app.use('/api/auth', authRoutes);
+
+// Rota de relatórios de administrador
 app.use('/api/relatorios', relatorioRoutes);
 
 
