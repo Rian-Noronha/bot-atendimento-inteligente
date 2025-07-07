@@ -1,6 +1,5 @@
-// 1. Importa os serviços de API necessários para a página
-import { apiKnowledgeLibraryService } from './services/apiKnowledgeLibraryService.js'; // Renomeado para consistência
-import { apiPalavraChaveService } from './services/apiPalavraChaveService.js'; 
+import { apiKnowledgeLibraryService } from './services/apiKnowledgeLibraryService.js';
+import { apiPalavraChaveService } from './services/apiPalavraChaveService.js';
 import { apiAuthService } from './services/apiAuthService.js';
 
 // 2. Importa o nosso novo gerenciador de sessão centralizado
@@ -14,6 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const hamburger = document.getElementById('hamburger');
     const aside = document.querySelector('aside');
     const searchInput = document.getElementById('knowledge-library-search-input-header');
+    const numDocumentsDisplayInput = document.getElementById('num-documents-display');
     const knowledgeLibraryTableBody = document.querySelector('#knowledge-library-table tbody');
     const noKnowledgeLibrarysMessage = document.getElementById('no-knowledge-librarys-message');
     const addKnowledgeLibraryButton = document.getElementById('add-knowledge-library-button');
@@ -34,8 +34,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // Variável para guardar todos os documentos da API
     let allDocuments = [];
 
-    // --- LÓGICA ESPECÍFICA DA PÁGINA ---
-
     // Lógica do Hamburger Menu
     if (hamburger && aside) {
         hamburger.addEventListener('click', () => aside.classList.toggle('open'));
@@ -46,7 +44,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Lógica do botão de logout (mantida, pois é robusta)
+    // Lógica do botão de logout
     if (logoutButton) {
         logoutButton.addEventListener('click', async (event) => {
             event.preventDefault();
@@ -85,22 +83,30 @@ document.addEventListener('DOMContentLoaded', () => {
      */
     function renderDocuments() {
         knowledgeLibraryTableBody.innerHTML = '';
+        
+        // filtrar por texto
         const searchTerm = searchInput.value.toLowerCase().trim();
-
-        const filteredDocuments = allDocuments.filter(doc => {
+        let filteredDocuments = allDocuments.filter(doc => {
             const palavrasChaveString = doc.palavrasChave.map(p => p.palavra).join(' ');
             return (
                 doc.subcategoria?.categoria?.nome.toLowerCase().includes(searchTerm) ||
                 doc.subcategoria?.nome.toLowerCase().includes(searchTerm) ||
                 doc.titulo.toLowerCase().includes(searchTerm) ||
                 (doc.descricao && doc.descricao.toLowerCase().includes(searchTerm)) ||
-                (doc.solucao && doc.solucao.toLowerCase().includes(searchTerm)) || // Adicionado verificação de nulidade
+                (doc.solucao && doc.solucao.toLowerCase().includes(searchTerm)) ||
                 palavrasChaveString.toLowerCase().includes(searchTerm)
             );
         });
 
+        // filtrar de quantidade de itens a serem exibidos
+        const numToDisplay = parseInt(numDocumentsDisplayInput.value);
+        if (!isNaN(numToDisplay) && numToDisplay > 0) {
+            filteredDocuments = filteredDocuments.slice(0, numToDisplay);
+        }
+
         if (filteredDocuments.length === 0) {
-            noKnowledgeLibrarysMessage.textContent = 'Nenhum documento encontrado.';
+            const message = searchTerm ? 'Nenhum documento encontrado para sua busca.' : 'Nenhum documento cadastrado.';
+            noKnowledgeLibrarysMessage.textContent = message;
             noKnowledgeLibrarysMessage.style.display = 'block';
             knowledgeLibraryTableBody.style.display = 'none';
         } else {
@@ -127,9 +133,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    /**
-     * Abre e preenche o modal de edição.
-     */
+    
     function openEditModal(docId) {
         const doc = allDocuments.find(d => d.id === docId);
         if (!doc) return;
@@ -139,23 +143,38 @@ document.addEventListener('DOMContentLoaded', () => {
         editDocumentMicrotema.value = doc.subcategoria?.nome || 'N/A';
         editDocumentTitle.value = doc.titulo;
         editDocumentDescription.value = doc.descricao || '';
-        // Mostra a solução ou um link para o anexo
         editDocumentSolution.value = doc.solucao || (doc.urlArquivo ? `Arquivo: ${doc.urlArquivo}` : '');
-        editDocumentSolution.readOnly = !!doc.urlArquivo; // Bloqueia edição se for um anexo
+        editDocumentSolution.readOnly = !!doc.urlArquivo;
         editDocumentKeywords.value = doc.palavrasChave.map(p => p.palavra).join(', ');
 
         editModal.style.display = 'flex';
         setTimeout(() => editModal.classList.add('active'), 10);
     }
-
-    function closeEditModal() { /* ... sua função closeEditModal existente ... */ }
-    async function handleDeleteDocument(docId) { /* ... sua função handleDeleteDocument existente ... */ }
-
-    // Lida com a submissão do formulário de edição
+    
+    function closeEditModal() {
+        editModal.classList.remove('active');
+        setTimeout(() => {
+            editModal.style.display = 'none';
+        }, 300);
+    }
+    
+    async function handleDeleteDocument(docId) {
+        if (!confirm('Tem certeza de que deseja excluir este documento? Esta ação não pode ser desfeita.')) {
+            return;
+        }
+        try {
+            await apiKnowledgeLibraryService.deletar(docId);
+            alert('Documento excluído com sucesso!');
+            allDocuments = allDocuments.filter(d => d.id !== docId);
+            renderDocuments();
+        } catch (error) {
+            alert(`Erro ao excluir o documento: ${error.message}`);
+        }
+    }
+    
     editForm.addEventListener('submit', async (event) => {
         event.preventDefault();
         const docId = parseInt(editDocumentId.value);
-        
         try {
             const keywordsString = editDocumentKeywords.value.trim();
             let palavrasChaveIds = [];
@@ -169,7 +188,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const updatedData = {
                 titulo: editDocumentTitle.value.trim(),
                 descricao: editDocumentDescription.value.trim(),
-                solucao: editDocumentSolution.value.trim(),
+                solucao: editDocumentSolution.readOnly ? undefined : editDocumentSolution.value.trim(),
                 palavrasChaveIds: palavrasChaveIds,
             };
             await apiKnowledgeLibraryService.atualizar(docId, updatedData);
@@ -182,10 +201,30 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // --- Listeners de Eventos ---
-    knowledgeLibraryTableBody.addEventListener('click', (event) => { /* ... sua lógica de clique na tabela ... */ });
+    knowledgeLibraryTableBody.addEventListener('click', (event) => {
+        const editButton = event.target.closest('.btn-edit');
+        const deleteButton = event.target.closest('.btn-delete');
+
+        if (editButton) {
+            const docId = parseInt(editButton.dataset.id, 10);
+            openEditModal(docId);
+            return;
+        }
+
+        if (deleteButton) {
+            const docId = parseInt(deleteButton.dataset.id, 10);
+            handleDeleteDocument(docId);
+            return;
+        }
+    });
+
     addKnowledgeLibraryButton.addEventListener('click', () => window.location.href = './upload.html');
     btnCancelDocument.addEventListener('click', closeEditModal);
     searchInput.addEventListener('input', renderDocuments);
+    //listener para o input de quantidade
+    if (numDocumentsDisplayInput) {
+        numDocumentsDisplayInput.addEventListener('input', renderDocuments);
+    }
     editModal.addEventListener('click', (event) => { if (event.target === editModal) closeEditModal(); });
     window.addEventListener('keydown', (event) => { if (event.key === 'Escape') closeEditModal(); });
 
