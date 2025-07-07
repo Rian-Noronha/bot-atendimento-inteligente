@@ -1,32 +1,22 @@
-// js/upload.js
-
-// 1. Importando todos os serviços de API necessários
 import { apiCategoriaService } from './services/apiCategoriaService.js';
 import { apiPalavraChaveService } from './services/apiPalavraChaveService.js';
 import { apiKnowledgeLibraryService } from './services/apiKnowledgeLibraryService.js';
-import { apiAuthService } from './services/apiAuthService.js';
-import { storageService } from './services/storageService.js'; // Importa o serviço do Firebase
-
-// 2. Importando o gerenciador de sessão
+import { storageService } from './services/storageService.js'; 
 import { startSessionManagement, logoutUser } from './utils/sessionManager.js';
 
 document.addEventListener('DOMContentLoaded', () => {
-    // 3. Inicia toda a lógica de segurança (timeout, abas, etc.) com uma única chamada
+    // 3. Inicia toda a lógica de segurança
     startSessionManagement();
 
-    // --- SELEÇÃO DE ELEMENTOS DO FORMULÁRIO E MENU ---
+    // --- SELEÇÃO DE ELEMENTOS ---
     const form = document.getElementById('upload-form');
     const uploadButton = document.getElementById('uploadButton');
     const uploadStatus = document.getElementById('uploadStatus');
     const logoutButton = document.getElementById('logout-btn');
-
-    // Elementos para alternar entre os modos
     const modoManualRadio = document.getElementById('modo-manual');
     const modoAutomaticoRadio = document.getElementById('modo-automatico');
     const manualContainer = document.getElementById('manual-entry-container');
     const automaticoContainer = document.getElementById('automatic-entry-container');
-    
-    // Elementos dos formulários
     const themeSelect = document.getElementById('select-theme');
     const subthemeSelect = document.getElementById('select-subtheme');
     const documentTitleInput = document.getElementById('document-title');
@@ -35,9 +25,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const textSolutionTextarea = document.getElementById('text-solution');
     const arquivoInput = document.getElementById('arquivo-input');
 
-    // --- LÓGICA ESPECÍFICA DA PÁGINA ---
+    // --- LÓGICA DA PÁGINA ---
 
-    // Lógica do botão de logout (agora chama a função centralizada)
     if (logoutButton) {
         logoutButton.addEventListener('click', (e) => { 
             e.preventDefault(); 
@@ -45,7 +34,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Função que gerencia quais campos são obrigatórios
     function toggleRequiredAttributes(isManualMode) {
         themeSelect.required = isManualMode;
         subthemeSelect.required = isManualMode;
@@ -54,7 +42,6 @@ document.addEventListener('DOMContentLoaded', () => {
         arquivoInput.required = !isManualMode;
     }
 
-    // Alterna a visibilidade dos containers e a obrigatoriedade dos campos
     modoManualRadio.addEventListener('change', () => {
         manualContainer.style.display = 'block';
         automaticoContainer.style.display = 'none';
@@ -111,7 +98,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /**
-     * LÓGICA DE ENVIO DO FORMULÁRIO (VERSÃO INTEGRADA)
+     * LÓGICA DE ENVIO DO FORMULÁRIO 
      */
     form.addEventListener('submit', async (event) => {
         event.preventDefault();
@@ -119,16 +106,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const modoSelecionado = document.querySelector('input[name="modo_criacao"]:checked').value;
         uploadButton.disabled = true;
+        uploadStatus.style.color = 'var(--cor-fonte)';
 
         if (modoSelecionado === 'manual') {
-            uploadStatus.textContent = 'A guardar documento...';
+            uploadStatus.textContent = 'Salvando documento...';
             try {
                 const keywordsString = documentKeywordsInput.value.trim();
                 let palavrasChaveIds = [];
                 if (keywordsString) {
                     const palavrasArray = keywordsString.split(',').map(p => p.trim()).filter(Boolean);
-                    const palavrasChaveSalvas = await apiPalavraChaveService.encontrarOuCriarLote(palavrasArray);
-                    palavrasChaveIds = palavrasChaveSalvas.map(p => p.id);
+                    if (palavrasArray.length > 0) {
+                        const palavrasChaveSalvas = await apiPalavraChaveService.encontrarOuCriarLote(palavrasArray);
+                        palavrasChaveIds = palavrasChaveSalvas.map(p => p.id);
+                    }
                 }
                 const dadosDocumento = {
                     titulo: documentTitleInput.value.trim(),
@@ -138,32 +128,40 @@ document.addEventListener('DOMContentLoaded', () => {
                     solucao: textSolutionTextarea.value.trim(),
                     urlArquivo: null,
                     palavrasChaveIds: palavrasChaveIds,
+                    ativo: true
                 };
                 await apiKnowledgeLibraryService.criar(dadosDocumento);
-                alert('Documento manual guardado com sucesso!');
+                alert('Documento salvo com sucesso!');
                 window.location.href = './knowledge_library.html';
             } catch (error) {
                 uploadStatus.textContent = `Erro: ${error.message}`;
+                uploadStatus.style.color = 'red';
                 uploadButton.disabled = false;
             }
         } else if (modoSelecionado === 'automatico') {
-            uploadStatus.textContent = 'A processar ficheiro...';
             try {
                 const file = arquivoInput.files[0];
-                if (!file) throw new Error('Por favor, selecione um ficheiro.');
+                if (!file) throw new Error('Por favor, selecione um arquivo.');
                 
-                uploadStatus.textContent = 'A enviar para a nuvem...';
-                // ✅ CHAMA O SERVIÇO DO FIREBASE
-                const fileUrl = await storageService.uploadFile(file, 'documentos'); 
+                // 1: Criar a função de callback para o progresso.
+                // Esta função será chamada pelo storageService sempre que o progresso mudar.
+                const onUploadProgress = (progress) => {
+                    uploadStatus.textContent = `Enviando para a nuvem... ${progress.toFixed(0)}%`;
+                };
 
-                uploadStatus.textContent = 'A solicitar análise de IA...';
-                await apiKnowledgeLibraryService.iniciarProcessamento({ urlArquivo: fileUrl });
+                // 2: Chamar o serviço de upload passando a função de callback como terceiro argumento.
+                const fileUrl = await storageService.uploadFile(file, 'documentos', onUploadProgress); 
 
-                alert('Ficheiro enviado para processamento! Isto pode levar alguns minutos.');
+                // Passo 3: Notificar o backend para iniciar o processamento
+                uploadStatus.textContent = 'Solicitando análise de IA...';
+                //await apiKnowledgeLibraryService.iniciarProcessamento({ urlArquivo: fileUrl });
+
+                alert('Arquivo guardado com sucesso. Sendo processado na sua base!');
                 window.location.href = './knowledge_library.html';
             } catch (error) {
                 console.error("Erro no processamento automático:", error);
-                uploadStatus.textContent = `Erro ao processar ficheiro: ${error.message}`;
+                uploadStatus.textContent = `Erro ao processar arquivo: ${error.message}`;
+                uploadStatus.style.color = 'red';
                 uploadButton.disabled = false;
             }
         }
