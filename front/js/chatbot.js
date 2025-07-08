@@ -1,11 +1,8 @@
 import { apiChatService } from './services/apiChatService.js';
 import { apiCategoriaService } from './services/apiCategoriaService.js';
-
-// 2. Importa o nosso novo gerenciador de sessão centralizado
 import { startSessionManagement, logoutUser } from './utils/sessionManager.js';
 
 document.addEventListener('DOMContentLoaded', () => {
-    // 3. Inicia toda a lógica de segurança (timeout, abas, etc.) com uma única chamada
     startSessionManagement();
 
     // --- SELEÇÃO DE ELEMENTOS ESPECÍFICOS DA PÁGINA ---
@@ -19,24 +16,54 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnFeedbackNao = document.getElementById('btn-feedback-nao');
     const feedbackStatus = document.getElementById('feedback-status');
     const logoutButton = document.getElementById('logout-btn');
+    const backButton = document.getElementById('back-button');
 
     let currentSessaoId = null;
     let currentRespostaId = null;
 
     // --- LÓGICA ESPECÍFICA DA PÁGINA ---
-
    
     if (logoutButton) {
         logoutButton.addEventListener('click', (e) => {
             e.preventDefault();
-            // Primeiro, garante que a sessão de chat seja encerrada
             if (currentSessaoId) {
                 apiChatService.encerrarSessao(currentSessaoId);
             }
-            // Em seguida, chama a função de logout principal
             logoutUser(); 
         });
     }
+
+    
+    if (backButton) {
+        backButton.addEventListener('click', (e) => {
+            e.preventDefault(); // Impede que o link seja seguido diretamente
+            
+            // Pega os dados do usuário salvos no login
+            const userDataString = localStorage.getItem('loggedInUser');
+            
+            if (userDataString) {
+                try {
+                    const userData = JSON.parse(userDataString);
+                    const userRole = userData.perfil?.nome?.toLowerCase();
+
+                    // Se for admin, volta para o dashboard
+                    if (userRole === 'administrador') {
+                        window.location.href = './dashboard.html';
+                    } else {
+                        // Se for qualquer outro perfil (operador, etc.), faz logout
+                        logoutUser();
+                    }
+                } catch (error) {
+                    console.error("Erro ao processar dados do usuário:", error);
+                    logoutUser("Ocorreu um erro ao verificar seu perfil.");
+                }
+            } else {
+                // Se, por algum motivo, não encontrar os dados, faz logout por segurança
+                logoutUser("Não foi possível verificar seu perfil. A fazer logout.");
+            }
+        });
+    }
+
 
     /**
      * Inicia a sessão de chat e carrega os temas iniciais.
@@ -52,7 +79,6 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             console.error("Erro ao inicializar o chat:", error);
             answerArea.value = "Erro ao iniciar o chat. A sua sessão pode ter expirado. Tente recarregar a página.";
-            // Desabilita os controles se a inicialização falhar
             themeSelect.disabled = true;
             subthemeSelect.disabled = true;
             inputPergunta.disabled = true;
@@ -60,7 +86,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // As funções abaixo permanecem exatamente as mesmas
+    // As funções abaixo permanecem as mesmas
     function popularTemas(temas) {
         themeSelect.innerHTML = '<option value="" disabled selected>Selecione um tema...</option>';
         temas.forEach(tema => {
@@ -68,6 +94,7 @@ document.addEventListener('DOMContentLoaded', () => {
             themeSelect.add(option);
         });
     }
+
     async function handleThemeChange() {
         const categoriaId = themeSelect.value;
         subthemeSelect.innerHTML = '<option value="" disabled selected>Buscando...</option>';
@@ -90,6 +117,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     }
+
     async function handleAsk() {
         const pergunta = inputPergunta.value.trim();
         const subcategoria_id = subthemeSelect.value;
@@ -120,6 +148,7 @@ document.addEventListener('DOMContentLoaded', () => {
             askButton.disabled = false;
         }
     }
+
     async function handleFeedback(foiUtil) {
         if (!currentRespostaId) return;
         feedbackStatus.textContent = 'A enviar feedback...';
@@ -160,9 +189,7 @@ document.addEventListener('DOMContentLoaded', () => {
     btnFeedbackSim.addEventListener('click', () => handleFeedback(true));
     btnFeedbackNao.addEventListener('click', () => handleFeedback(false));
 
-    //  listener para encerrar a sessão quando o usuário fecha/sai da página.
     window.addEventListener('beforeunload', () => {
-        // Verifica se existe uma sessão de chat ativa para encerrar
         if (currentSessaoId) {
             apiChatService.encerrarSessao(currentSessaoId);
         }
