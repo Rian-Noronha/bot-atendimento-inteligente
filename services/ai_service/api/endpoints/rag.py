@@ -1,8 +1,7 @@
-# api/endpoints/rag.py
 from fastapi import APIRouter, HTTPException
 from schemas.document import AskRequest
-from core.models import embeddings_model, llm
-from core.database import engine
+from models.loader import embeddings_model, llm
+from config.database import engine
 from sqlalchemy import text
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser

@@ -1,7 +1,6 @@
-# core/models.py
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_groq import ChatGroq
-from .config import settings
+from config.settings import settings
 
 print("A carregar os modelos de IA...")
 

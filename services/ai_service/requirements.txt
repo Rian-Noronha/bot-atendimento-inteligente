@@ -32,3 +32,8 @@ ipython
 #Para conectar ao PostgreSQL a partir do Python
 sqlalchemy
 psycopg2-binary
+
+#Gerenciar os arquivos
+requests
+pypdf
+python-docx

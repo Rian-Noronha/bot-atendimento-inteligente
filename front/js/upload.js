@@ -154,7 +154,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // Passo 3: Notificar o backend para iniciar o processamento
                 uploadStatus.textContent = 'Solicitando análise de IA...';
-                //await apiKnowledgeLibraryService.iniciarProcessamento({ urlArquivo: fileUrl });
+                await apiKnowledgeLibraryService.iniciarProcessamento({ urlArquivo: fileUrl });
 
                 alert('Arquivo guardado com sucesso. Sendo processado na sua base!');
                 window.location.href = './knowledge_library.html';
