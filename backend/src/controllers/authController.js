@@ -10,23 +10,27 @@ const { enviarEmailRecuperacao } = require('../services/emailService');
  * @description Realiza o login, invalida sessões antigas e cria uma nova sessão ativa.
  */
 exports.login = async (req, res) => {
+    // Inicia a transação. A variável 't' estará disponível em todo o escopo.
     const t = await sequelize.transaction();
 
     try {
         const { email, senha } = req.body;
         if (!email || !senha) {
+            // Não é necessário fazer rollback aqui, pois a transação será abandonada
+            // e não confirmada, o que não causa problemas.
             return res.status(400).json({ message: "Email e senha são obrigatórios." });
         }
 
         const usuario = await Usuario.scope('withPassword').findOne({
             where: { email },
             include: [{ model: Perfil, as: 'perfil' }],
-            transaction: t // Garante que a leitura faça parte da transação
+            transaction: t
         });
 
+        // Validação centralizada. Se falhar, lança um erro que será pego pelo 'catch'.
         if (!usuario || !usuario.ativo || !(await bcrypt.compare(senha, usuario.senha_hash))) {
-            await t.rollback();
-            return res.status(401).json({ message: "Credenciais inválidas ou usuário inativo." });
+            // Lançar um erro é a melhor forma de pular para o bloco catch, que fará o rollback.
+            throw new Error("Credenciais inválidas");
         }
 
         // --- LÓGICA DE SESSÃO ÚNICA ---
@@ -50,13 +54,21 @@ exports.login = async (req, res) => {
         
         const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '8h' });
         
-        // Remove o hash da senha do objeto antes de enviá-lo na resposta
-        const { senha_hash, ...usuarioSemSenha } = usuario.toJSON();
-        
         res.status(200).json({ token, usuario: payload });
 
     } catch (error) {
-        await t.rollback();
+        // O Rollback agora está centralizado aqui. Ele só será chamado se um erro ocorrer.
+        // É importante verificar se a transação não foi finalizada antes de fazer o rollback.
+        if (t && !t.finished) {
+            await t.rollback();
+        }
+        
+        // Se o erro for de credenciais, manda a resposta específica.
+        if (error.message === "Credenciais inválidas") {
+            return res.status(401).json({ message: "Credenciais inválidas ou usuário inativo." });
+        }
+        
+        // Para todos os outros erros
         console.error("Erro durante o login:", error);
         res.status(500).json({ message: "Erro interno no servidor durante o login." });
     }
