@@ -1,6 +1,6 @@
 import requests
 import io
-from pypdf import PdfReader 
+from pypdf import PdfReader
 import docx
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from transformers import AutoTokenizer
@@ -8,6 +8,7 @@ from transformers import AutoTokenizer
 from models.loader import embeddings_model
 from config.settings import settings
 from schemas.document import DocumentProcessRequest
+
 # --- Configuração do Divisor de Texto (Chunker) ---
 tokenizer = AutoTokenizer.from_pretrained(settings.EMBEDDINGS_MODEL_NAME)
 
@@ -39,9 +40,10 @@ def _extract_text_from_docx(content: bytes) -> str:
 
 async def process_and_generate_chunks(request_data: DocumentProcessRequest):
     """
-    Orquestra o processamento do documento.
-    Retorna uma lista de "documentos-chunk" prontos para serem salvos no banco.
+    Orquestra o processamento do documento e retorna uma lista de "documentos-chunk"
+    prontos para serem salvos no banco pelo Node.js.
     """
+    # Cenário 1: Processamento automático a partir de uma URL de ficheiro
     if request_data.url_arquivo:
         print(f"Iniciando processamento automático para a URL: {request_data.url_arquivo}")
         
@@ -54,7 +56,7 @@ async def process_and_generate_chunks(request_data: DocumentProcessRequest):
         elif request_data.url_arquivo.lower().endswith('.docx'):
             text = _extract_text_from_docx(file_content)
         else:
-            raise ValueError("Formato de arquivo não suportado. Use .pdf ou .docx.")
+            raise ValueError("Formato de ficheiro não suportado. Use .pdf ou .docx.")
 
         if not text.strip():
             raise ValueError("Não foi possível extrair texto do documento ou o documento está vazio.")
@@ -72,15 +74,16 @@ async def process_and_generate_chunks(request_data: DocumentProcessRequest):
                 "subcategoria_id": request_data.subcategoria_id,
                 "solucao": chunk_text,
                 "embedding": embedding,
-                "urlArquivo": request_data.url_arquivo,
+                "urlArquivo": request_data.url_arquivo, 
                 "ativo": True
             }
             processed_chunks.append(chunk_data)
         
         return processed_chunks
 
+    # Cenário 2: Processamento manual a partir do campo 'solucao'
     elif request_data.solucao:
-        print("Iniciando processamento sem arquivo.")
+        print("Iniciando processamento manual (sem ficheiro).")
         embedding = embeddings_model.embed_query(request_data.solucao)
         
         manual_document = {
@@ -89,7 +92,7 @@ async def process_and_generate_chunks(request_data: DocumentProcessRequest):
             "subcategoria_id": request_data.subcategoria_id,
             "solucao": request_data.solucao,
             "embedding": embedding,
-            "urlArquivo": None,
+            "urlArquivo": None, 
             "ativo": True
         }
         return [manual_document]

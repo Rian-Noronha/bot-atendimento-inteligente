@@ -1,35 +1,23 @@
 import uvicorn
 from fastapi import FastAPI
-
-
-from api.endpoints.analysis import router as analysis_router
-from api.endpoints.rag import router as rag_router
+from api.router import api_router 
 
 # Cria a instância principal da aplicação FastAPI
 app = FastAPI(
     title="Serviço de IA para Bot de Atendimento",
-    description="API para análise de documentos e busca semântica (RAG).",
+    description="API para processamento de documentos e busca semântica (RAG).",
     version="1.0.0"
 )
 
-# Rota para análise e processamento de documentos
-app.include_router(
-    analysis_router,
-    prefix="/api",
-    tags=["Análise de Documentos"]
-)
 
-# Rota para perguntas e respostas (RAG)
-app.include_router(
-    rag_router,
-    prefix="/api",
-    tags=["RAG"]
-)
+# - /api/documents/process
+# - /api/ask
+app.include_router(api_router, prefix="/api")
 
-# Ponto de entrada para uma mensagem de status simples
-@app.get("/", tags=["Root"])
+
+@app.get("/", tags=["Status"])
 def read_root():
-    """Retorna uma mensagem simples para confirmar que o serviço está no ar."""
+    """O serviço de IA para o Sistema Bot Inteligente (...)."""
     return {"message": "Serviço de IA está operacional."}
 
 # Bloco para permitir a execução direta do ficheiro
