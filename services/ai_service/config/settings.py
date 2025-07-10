@@ -21,7 +21,7 @@ class Settings(BaseSettings):
 
     # --- Configurações do Modelo (com valores padrão) ---
     EMBEDDINGS_MODEL_NAME: str = "sentence-transformers/all-mpnet-base-v2"
-    LLM_MODEL_NAME: str = "llama3-8b-8192"
+    LLM_MODEL_NAME: str = "llama-3.1-8b-instant"
 
     # Propriedade para construir a URL de conexão dinamicamente
     @property
