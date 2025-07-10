@@ -7,27 +7,17 @@ langchain
 langgraph
 langsmith
 langchain-groq
-langchain-openai
 langchain-huggingface
 langchain-community
 langchain-text-splitters
 
-# Modelos de Embedding e Transformers (CPU-first)
+# Modelos de Embedding e Transformers 
 sentence-transformers
 torch
 transformers
 
 # Ferramenta para carregar variáveis de ambiente
 python-dotenv
-
-# Ferramenta para extrair conteúdo de páginas web
-beautifulsoup4
-
-# Essencial para o Jupyter funcionar com ambientes virtuais
-ipykernel
-
-# Para exibição de imagens no notebook
-ipython
 
 #Para conectar ao PostgreSQL a partir do Python
 sqlalchemy
