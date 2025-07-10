@@ -22,7 +22,7 @@ module.exports = (sequelize, DataTypes) => {
   Documento.init({
     titulo: DataTypes.STRING,
     descricao: DataTypes.STRING,
-    solucao: DataTypes.STRING,
+    solucao: DataTypes.TEXT,
     ativo: DataTypes.BOOLEAN,
     urlArquivo: DataTypes.STRING,
     tipoDocumento: DataTypes.STRING,
