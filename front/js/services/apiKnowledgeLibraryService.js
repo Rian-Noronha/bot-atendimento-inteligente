@@ -1,10 +1,8 @@
-// 1. Importa as funções compartilhadas do nosso módulo de utilitários
 import { getAuthHeaders, handleResponseError } from '../utils/apiUtils.js';
 
-// Padronizando o nome para apiDocumentoService para maior clareza
 export const apiKnowledgeLibraryService = {
     /**
-     * Busca todos os documentos, agora usando um caminho relativo e cabeçalhos centralizados.
+     * Busca todos os documentos.
      */
     async pegarTodos() {
         const response = await fetch(`/api/documentos`, {
@@ -28,7 +26,7 @@ export const apiKnowledgeLibraryService = {
     },
 
     /**
-     * Cria um novo documento.
+     * Cria um novo documento (ou vários, se for por ficheiro).
      */
     async criar(dados) {
         const response = await fetch(`/api/documentos`, {
@@ -65,18 +63,5 @@ export const apiKnowledgeLibraryService = {
             await handleResponseError(response);
         }
         return true;
-    },
-
-    /**
-     * Envia a URL de um arquivo para o backend iniciar o processamento automático.
-     */
-    async iniciarProcessamento(dados) {
-        const response = await fetch(`/api/documentos/iniciar-processamento`, {
-            method: 'POST',
-            headers: getAuthHeaders(),
-            body: JSON.stringify(dados)
-        });
-        if (!response.ok) await handleResponseError(response);
-        return await response.json();
     }
 };

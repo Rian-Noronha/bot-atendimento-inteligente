@@ -17,13 +17,11 @@ async def process_document_endpoint(request: DocumentProcessRequest):
     para serem salvos no banco de dados pelo Node.js.
     """
     try:
-        # Chama a lógica principal para processar a requisição
         documents_to_save = await process_and_generate_chunks(request)
         
-        # Retorna os dados processados para o Node.js
         return {
             "message": f"Processamento concluído. {len(documents_to_save)} documento(s) prontos para salvamento.",
-            "data": documents_to_save # O Node.js espera os dados em um campo 'data'
+            "data": documents_to_save
         }
         
     except ValueError as e:

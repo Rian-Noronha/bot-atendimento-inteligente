@@ -12,5 +12,5 @@ router.put('/:id', protect, isAdmin, documentosController.atualizarDocumento);
 router.delete('/:id', protect, isAdmin, documentosController.deletarDocumento);
 
 
-router.post('/iniciar-processamento', protect, isAdmin, documentosController.iniciarProcessamentoAutomatico);
+
 module.exports = router;

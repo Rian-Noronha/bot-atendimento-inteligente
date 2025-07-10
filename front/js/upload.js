@@ -20,7 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const textSolutionTextarea = document.getElementById('text-solution');
     const arquivoInput = document.getElementById('arquivo-input');
 
-    // --- LÓGICA DA PÁGINA ---
+    // --- LÓGICA DA PÁGINA (Funções de popular e validar permanecem as mesmas) ---
 
     if (logoutButton) {
         logoutButton.addEventListener('click', (e) => {
@@ -33,10 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const temas = await apiCategoriaService.pegarTodasCategorias();
             themeSelect.innerHTML = '<option value="">Selecione um tema...</option>';
-            temas.forEach(tema => {
-                const option = new Option(tema.nome, tema.id);
-                themeSelect.add(option);
-            });
+            temas.forEach(tema => themeSelect.add(new Option(tema.nome, tema.id)));
         } catch (error) {
             console.error('Erro ao carregar temas:', error);
             uploadStatus.textContent = 'Erro ao carregar categorias.';
@@ -55,10 +52,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const microtemas = await apiCategoriaService.pegarSubcategoriasPorCategoriaId(temaId);
             subthemeSelect.innerHTML = '<option value="">Selecione um micro-tema...</option>';
-            microtemas.forEach(sub => {
-                const option = new Option(sub.nome, sub.id);
-                subthemeSelect.add(option);
-            });
+            microtemas.forEach(sub => subthemeSelect.add(new Option(sub.nome, sub.id)));
             subthemeSelect.disabled = false;
         } catch (error) {
             console.error('Erro ao carregar micro-temas:', error);
@@ -70,15 +64,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function checkFormValidity() {
         const baseFormValid = form.checkValidity();
-        
-        // Validação adicional: OU o campo solução OU o input de arquivo deve ter valor
         const solutionOrFileProvided = textSolutionTextarea.value.trim() !== '' || arquivoInput.files.length > 0;
-
         uploadButton.disabled = !(baseFormValid && solutionOrFileProvided);
     }
 
     /**
-     * LÓGICA DE ENVIO DO FORMULÁRIO COM ESCOLHA DE CONTEÚDO
+     * LÓGICA DE ENVIO DO FORMULÁRIO (UNIFICADA)
      */
     form.addEventListener('submit', async (event) => {
         event.preventDefault();
@@ -89,58 +80,36 @@ document.addEventListener('DOMContentLoaded', () => {
         uploadStatus.textContent = 'Iniciando...';
 
         try {
-            const isManualSolution = textSolutionTextarea.value.trim() !== '';
-            const isFileSolution = arquivoInput.files.length > 0;
+            let fileUrl = null;
+            const file = arquivoInput.files[0];
 
-            if (isManualSolution) {
-                // --- FLUXO 1: SOLUÇÃO MANUAL ---
-                uploadStatus.textContent = 'Processando dados do documento...';
-                
-                const keywordsString = documentKeywordsInput.value.trim();
-                let palavrasChaveIds = [];
-                if (keywordsString) {
-                    const palavrasArray = keywordsString.split(',').map(p => p.trim()).filter(Boolean);
-                    if (palavrasArray.length > 0) {
-                        palavrasChaveIds = (await apiPalavraChaveService.encontrarOuCriarLote(palavrasArray)).map(p => p.id);
-                    }
-                }
-
-                const dadosDocumento = {
-                    titulo: documentTitleInput.value.trim(),
-                    descricao: documentDescriptionTextarea.value.trim(),
-                    subcategoria_id: parseInt(subthemeSelect.value, 10),
-                    tipoDocumento: 'texto',
-                    solucao: textSolutionTextarea.value.trim(), // Conteúdo vem do textarea
-                    urlArquivo: null, // Nenhum arquivo neste fluxo
-                    palavrasChaveIds: palavrasChaveIds,
-                    ativo: true
-                };
-
-                uploadStatus.textContent = 'Gerando embedding e salvando...';
-                await apiKnowledgeLibraryService.criar(dadosDocumento);
-                alert('Documento salvo com sucesso!');
-
-            } else if (isFileSolution) {
-                // --- FLUXO 2: PROCESSAMENTO DE ARQUIVO ---
-                const file = arquivoInput.files[0];
-                
+            // PASSO 1: Se houver um ficheiro, faz o upload para o storage.
+            if (file) {
                 const onUploadProgress = (progress) => {
-                    uploadStatus.textContent = `Enviando arquivo para a nuvem... ${progress.toFixed(0)}%`;
+                    uploadStatus.textContent = `Enviando ficheiro para a nuvem... ${progress.toFixed(0)}%`;
                 };
-                const fileUrl = await storageService.uploadFile(file, 'documentos', onUploadProgress);
-
-                // Notifica o backend para iniciar o processamento (que fará o chunking)
-                uploadStatus.textContent = 'Solicitando análise de IA...';
-                await apiKnowledgeLibraryService.iniciarProcessamento({
-                    urlArquivo: fileUrl,
-                    titulo: documentTitleInput.value.trim(),
-                    descricao: documentDescriptionTextarea.value.trim(),
-                    subcategoria_id: parseInt(subthemeSelect.value, 10),
-                    // O backend usará esses metadados para todos os chunks que criar
-                });
-                alert('Arquivo enviado com sucesso! O processamento foi iniciado.');
+                fileUrl = await storageService.uploadFile(file, 'documentos', onUploadProgress);
             }
 
+            uploadStatus.textContent = 'Preparando dados para análise...';
+
+            // PASSO 2: Monta o payload final para a API.
+            // Este objeto é enviado independentemente do fluxo.
+            const dadosParaCriar = {
+                titulo: documentTitleInput.value.trim(),
+                descricao: documentDescriptionTextarea.value.trim(),
+                subcategoria_id: parseInt(subthemeSelect.value, 10),
+                palavrasChave: documentKeywordsInput.value.trim().split(',').map(p => p.trim()).filter(Boolean),
+                solucao: textSolutionTextarea.value.trim() || null, // Envia o texto da solução se houver
+                urlArquivo: fileUrl, // Envia a URL do ficheiro se houver
+                ativo: true
+            };
+
+            // PASSO 3: Chama a única função de criação do serviço.
+            uploadStatus.textContent = 'Enviando para processamento da IA...';
+            const resultado = await apiKnowledgeLibraryService.criar(dadosParaCriar);
+
+            alert(resultado.message || 'Operação concluída com sucesso!');
             window.location.href = './knowledge_library.html';
 
         } catch (error) {
@@ -153,10 +122,8 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // --- EVENT LISTENERS E INICIALIZAÇÃO ---
     themeSelect.addEventListener('change', popularMicroTemas);
-    // Valida o formulário em qualquer alteração
     form.addEventListener('input', checkFormValidity);
     
-    // Inicialização da página
     popularTemas();
     checkFormValidity();
 });
