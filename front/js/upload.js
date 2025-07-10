@@ -1,11 +1,10 @@
 import { apiCategoriaService } from './services/apiCategoriaService.js';
 import { apiPalavraChaveService } from './services/apiPalavraChaveService.js';
 import { apiKnowledgeLibraryService } from './services/apiKnowledgeLibraryService.js';
-import { storageService } from './services/storageService.js'; 
+import { storageService } from './services/storageService.js';
 import { startSessionManagement, logoutUser } from './utils/sessionManager.js';
 
 document.addEventListener('DOMContentLoaded', () => {
-    // 3. Inicia toda a lógica de segurança
     startSessionManagement();
 
     // --- SELEÇÃO DE ELEMENTOS ---
@@ -13,10 +12,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const uploadButton = document.getElementById('uploadButton');
     const uploadStatus = document.getElementById('uploadStatus');
     const logoutButton = document.getElementById('logout-btn');
-    const modoManualRadio = document.getElementById('modo-manual');
-    const modoAutomaticoRadio = document.getElementById('modo-automatico');
-    const manualContainer = document.getElementById('manual-entry-container');
-    const automaticoContainer = document.getElementById('automatic-entry-container');
     const themeSelect = document.getElementById('select-theme');
     const subthemeSelect = document.getElementById('select-subtheme');
     const documentTitleInput = document.getElementById('document-title');
@@ -28,34 +23,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- LÓGICA DA PÁGINA ---
 
     if (logoutButton) {
-        logoutButton.addEventListener('click', (e) => { 
-            e.preventDefault(); 
-            logoutUser(); 
+        logoutButton.addEventListener('click', (e) => {
+            e.preventDefault();
+            logoutUser();
         });
     }
-
-    function toggleRequiredAttributes(isManualMode) {
-        themeSelect.required = isManualMode;
-        subthemeSelect.required = isManualMode;
-        documentTitleInput.required = isManualMode;
-        textSolutionTextarea.required = isManualMode;
-        arquivoInput.required = !isManualMode;
-    }
-
-    modoManualRadio.addEventListener('change', () => {
-        manualContainer.style.display = 'block';
-        automaticoContainer.style.display = 'none';
-        uploadButton.textContent = 'Salvar Documento';
-        toggleRequiredAttributes(true);
-        checkFormValidity();
-    });
-    modoAutomaticoRadio.addEventListener('change', () => {
-        manualContainer.style.display = 'none';
-        automaticoContainer.style.display = 'block';
-        uploadButton.textContent = 'Processar Arquivo';
-        toggleRequiredAttributes(false);
-        checkFormValidity();
-    });
 
     async function popularTemas() {
         try {
@@ -67,8 +39,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         } catch (error) {
             console.error('Erro ao carregar temas:', error);
-            uploadStatus.textContent = 'Erro ao carregar categorias. Tente recarregar a página.';
-            uploadStatus.style.color = 'red';
+            uploadStatus.textContent = 'Erro ao carregar categorias.';
         }
     }
 
@@ -97,85 +68,95 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    function checkFormValidity() {
+        const baseFormValid = form.checkValidity();
+        
+        // Validação adicional: OU o campo solução OU o input de arquivo deve ter valor
+        const solutionOrFileProvided = textSolutionTextarea.value.trim() !== '' || arquivoInput.files.length > 0;
+
+        uploadButton.disabled = !(baseFormValid && solutionOrFileProvided);
+    }
+
     /**
-     * LÓGICA DE ENVIO DO FORMULÁRIO 
+     * LÓGICA DE ENVIO DO FORMULÁRIO COM ESCOLHA DE CONTEÚDO
      */
     form.addEventListener('submit', async (event) => {
         event.preventDefault();
         if (uploadButton.disabled) return;
 
-        const modoSelecionado = document.querySelector('input[name="modo_criacao"]:checked').value;
         uploadButton.disabled = true;
         uploadStatus.style.color = 'var(--cor-fonte)';
+        uploadStatus.textContent = 'Iniciando...';
 
-        if (modoSelecionado === 'manual') {
-            uploadStatus.textContent = 'Salvando documento...';
-            try {
+        try {
+            const isManualSolution = textSolutionTextarea.value.trim() !== '';
+            const isFileSolution = arquivoInput.files.length > 0;
+
+            if (isManualSolution) {
+                // --- FLUXO 1: SOLUÇÃO MANUAL ---
+                uploadStatus.textContent = 'Processando dados do documento...';
+                
                 const keywordsString = documentKeywordsInput.value.trim();
                 let palavrasChaveIds = [];
                 if (keywordsString) {
                     const palavrasArray = keywordsString.split(',').map(p => p.trim()).filter(Boolean);
                     if (palavrasArray.length > 0) {
-                        const palavrasChaveSalvas = await apiPalavraChaveService.encontrarOuCriarLote(palavrasArray);
-                        palavrasChaveIds = palavrasChaveSalvas.map(p => p.id);
+                        palavrasChaveIds = (await apiPalavraChaveService.encontrarOuCriarLote(palavrasArray)).map(p => p.id);
                     }
                 }
+
                 const dadosDocumento = {
                     titulo: documentTitleInput.value.trim(),
                     descricao: documentDescriptionTextarea.value.trim(),
                     subcategoria_id: parseInt(subthemeSelect.value, 10),
                     tipoDocumento: 'texto',
-                    solucao: textSolutionTextarea.value.trim(),
-                    urlArquivo: null,
+                    solucao: textSolutionTextarea.value.trim(), // Conteúdo vem do textarea
+                    urlArquivo: null, // Nenhum arquivo neste fluxo
                     palavrasChaveIds: palavrasChaveIds,
                     ativo: true
                 };
+
+                uploadStatus.textContent = 'Gerando embedding e salvando...';
                 await apiKnowledgeLibraryService.criar(dadosDocumento);
                 alert('Documento salvo com sucesso!');
-                window.location.href = './knowledge_library.html';
-            } catch (error) {
-                uploadStatus.textContent = `Erro: ${error.message}`;
-                uploadStatus.style.color = 'red';
-                uploadButton.disabled = false;
-            }
-        } else if (modoSelecionado === 'automatico') {
-            try {
+
+            } else if (isFileSolution) {
+                // --- FLUXO 2: PROCESSAMENTO DE ARQUIVO ---
                 const file = arquivoInput.files[0];
-                if (!file) throw new Error('Por favor, selecione um arquivo.');
                 
-                // 1: Criar a função de callback para o progresso.
-                // Esta função será chamada pelo storageService sempre que o progresso mudar.
                 const onUploadProgress = (progress) => {
-                    uploadStatus.textContent = `Enviando para a nuvem... ${progress.toFixed(0)}%`;
+                    uploadStatus.textContent = `Enviando arquivo para a nuvem... ${progress.toFixed(0)}%`;
                 };
+                const fileUrl = await storageService.uploadFile(file, 'documentos', onUploadProgress);
 
-                // 2: Chamar o serviço de upload passando a função de callback como terceiro argumento.
-                const fileUrl = await storageService.uploadFile(file, 'documentos', onUploadProgress); 
-
-                // Passo 3: Notificar o backend para iniciar o processamento
+                // Notifica o backend para iniciar o processamento (que fará o chunking)
                 uploadStatus.textContent = 'Solicitando análise de IA...';
-                await apiKnowledgeLibraryService.iniciarProcessamento({ urlArquivo: fileUrl });
-
-                alert('Arquivo guardado com sucesso. Sendo processado na sua base!');
-                window.location.href = './knowledge_library.html';
-            } catch (error) {
-                console.error("Erro no processamento automático:", error);
-                uploadStatus.textContent = `Erro ao processar arquivo: ${error.message}`;
-                uploadStatus.style.color = 'red';
-                uploadButton.disabled = false;
+                await apiKnowledgeLibraryService.iniciarProcessamento({
+                    urlArquivo: fileUrl,
+                    titulo: documentTitleInput.value.trim(),
+                    descricao: documentDescriptionTextarea.value.trim(),
+                    subcategoria_id: parseInt(subthemeSelect.value, 10),
+                    // O backend usará esses metadados para todos os chunks que criar
+                });
+                alert('Arquivo enviado com sucesso! O processamento foi iniciado.');
             }
+
+            window.location.href = './knowledge_library.html';
+
+        } catch (error) {
+            console.error("Erro no envio:", error);
+            uploadStatus.textContent = `Erro: ${error.message}`;
+            uploadStatus.style.color = 'red';
+            uploadButton.disabled = false;
         }
     });
     
-    function checkFormValidity() {
-        const isFormValid = form.checkValidity();
-        uploadButton.disabled = !isFormValid;
-    }
-
     // --- EVENT LISTENERS E INICIALIZAÇÃO ---
     themeSelect.addEventListener('change', popularMicroTemas);
+    // Valida o formulário em qualquer alteração
     form.addEventListener('input', checkFormValidity);
+    
+    // Inicialização da página
     popularTemas();
-    toggleRequiredAttributes(true);
     checkFormValidity();
 });
