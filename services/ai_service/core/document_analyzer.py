@@ -1,105 +1,76 @@
+
 import requests
 import io
-from pypdf import PdfReader
-import docx
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from transformers import AutoTokenizer
-from urllib.parse import urlparse 
-import os 
+import re
+from typing import List
+from urllib.parse import urlparse
+import os
+
 
 from models.loader import embeddings_model
 from config.settings import settings
 from schemas.document import DocumentProcessRequest
 
-# --- Configuração do Divisor de Texto (Chunker) ---
-tokenizer = AutoTokenizer.from_pretrained(settings.EMBEDDINGS_MODEL_NAME)
+# --- Imports do Unstructured ---
+from unstructured.partition.auto import partition
+from unstructured.documents.elements import Element
 
-text_splitter = RecursiveCharacterTextSplitter.from_huggingface_tokenizer(
-    tokenizer=tokenizer,
-    chunk_size=512,
-    chunk_overlap=50,
-)
-
-def _extract_text_from_pdf(content: bytes) -> str:
-    """Função auxiliar para extrair texto de um conteúdo de ficheiro PDF."""
-    try:
-        reader = PdfReader(io.BytesIO(content))
-        text = "".join(page.extract_text() or "" for page in reader.pages)
-        return text
-    except Exception as e:
-        print(f"Erro ao extrair texto do PDF: {e}")
-        return ""
-
-def _extract_text_from_docx(content: bytes) -> str:
-    """Função auxiliar para extrair texto de um conteúdo de ficheiro DOCX."""
-    try:
-        doc = docx.Document(io.BytesIO(content))
-        text = "\n".join([para.text for para in doc.paragraphs if para.text.strip()])
-        return text
-    except Exception as e:
-        print(f"Erro ao extrair texto do DOCX: {e}")
-        return ""
-
-async def process_and_generate_chunks(request_data: DocumentProcessRequest):
+async def process_and_generate_chunks(request_data: DocumentProcessRequest) -> List[dict]:
     """
-    Orquestra o processamento do documento e retorna uma lista de "documentos-chunk"
-    prontos para serem salvos no banco pelo Node.js.
+# --- Imports do Unstructured ---
+    Versão final e simplificada: Usa um delimitador universal ('# ') para dividir
+    o documento em chunks, conforme o modelo padrão fornecido pelo usuário.
     """
+    # --- ETAPA 1: EXTRAIR O TEXTO DO DOCUMENTO ---
+    elements: List[Element] = []
     if request_data.url_arquivo:
-        print(f"Iniciando processamento automático para a URL: {request_data.url_arquivo}")
+        print(f"Iniciando processamento com Unstructured para a URL: {request_data.url_arquivo}")
+        try:
+            response = requests.get(request_data.url_arquivo)
+            response.raise_for_status()
+            file_content = response.content
+            # Podemos usar "fast", pois a estrutura é garantida pelo modelo.
+            elements = partition(file=io.BytesIO(file_content), strategy="fast")
+        except Exception as e:
+            # ... seu código de erro ...
+            raise ValueError(f"Erro ao processar o arquivo com Unstructured: {e}")
+
+    if not elements:
+        raise ValueError("Unstructured não conseguiu extrair elementos do documento.")
+
+    full_text = "\n\n".join([el.text for el in elements if el.text.strip()])
+
+    # --- ETAPA 2: DIVISÃO PELO DELIMITADOR UNIVERSAL '#' ---
+    # A expressão regular agora é fixa e muito simples.
+    # Ela divide o texto em cada ocorrência de uma nova linha seguida de "# ".
+    # O (?=...) mantém o delimitador no início de cada chunk.
+    logical_blocks = re.split(r'(?=\n#\s)', full_text)
+
+    print(f"Documento dividido em {len(logical_blocks)} chunks usando o delimitador '#'.")
+
+    # --- ETAPA 3: PROCESSAR OS CHUNKS ---
+    processed_chunks = []
+    for chunk_text in logical_blocks:
+        # Limpa o chunk de espaços em branco no início/fim
+        clean_chunk = chunk_text.strip()
+        if not clean_chunk:
+            continue
         
-        response = requests.get(request_data.url_arquivo)
-        response.raise_for_status()
+        # O título é a primeira linha, removendo o '#' inicial.
+        specific_title = clean_chunk.split('\n', 1)[0].replace("#", "").strip()
         
-        file_content = response.content
-
-        # --- CORREÇÃO APLICADA AQUI ---
-        # Analisa a URL para extrair o caminho e verificar a extensão corretamente.
-        parsed_url = urlparse(request_data.url_arquivo)
-        path = parsed_url.path
-        file_extension = os.path.splitext(path)[1].lower()
-
-        if file_extension == '.pdf':
-            text = _extract_text_from_pdf(file_content)
-        elif file_extension == '.docx':
-            text = _extract_text_from_docx(file_content)
-        else:
-            raise ValueError(f"Formato de ficheiro não suportado ('{file_extension}'). Use .pdf ou .docx.")
-
-        if not text.strip():
-            raise ValueError("Não foi possível extrair texto do documento ou o documento está vazio.")
-
-        chunks = text_splitter.split_text(text)
-        print(f"Documento dividido em {len(chunks)} chunks.")
-
-        processed_chunks = []
-        for i, chunk_text in enumerate(chunks):
-            embedding = embeddings_model.embed_query(chunk_text)
-            
-            chunk_data = {
-                "titulo": request_data.titulo,
-                "descricao": request_data.descricao,
-                "subcategoria_id": request_data.subcategoria_id,
-                "solucao": chunk_text,
-                "embedding": embedding,
-                "urlArquivo": request_data.url_arquivo,
-                "ativo": True
-            }
-            processed_chunks.append(chunk_data)
+        embedding = embeddings_model.embed_query(clean_chunk)
         
-        return processed_chunks
-
-    elif request_data.solucao:
-        print("Iniciando processamento manual (sem ficheiro).")
-        embedding = embeddings_model.embed_query(request_data.solucao)
-        
-        manual_document = {
+        chunk_data = {
             "titulo": request_data.titulo,
+            "solucao": clean_chunk,
+            # ... resto dos seus campos ...
             "descricao": request_data.descricao,
             "subcategoria_id": request_data.subcategoria_id,
-            "solucao": request_data.solucao,
             "embedding": embedding,
-            "urlArquivo": None,
+            "urlArquivo": request_data.url_arquivo,
             "ativo": True
         }
-        return [manual_document]
+        processed_chunks.append(chunk_data)
+    
+    return processed_chunks

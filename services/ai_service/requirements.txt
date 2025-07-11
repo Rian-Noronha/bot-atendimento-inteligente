@@ -11,6 +11,9 @@ langchain-huggingface
 langchain-community
 langchain-text-splitters
 
+# Processamento de Documentos (aqui está a mudança)
+unstructured[all-docs]
+
 # Modelos de Embedding e Transformers 
 sentence-transformers
 torch
@@ -19,11 +22,9 @@ transformers
 # Ferramenta para carregar variáveis de ambiente
 python-dotenv
 
-#Para conectar ao PostgreSQL a partir do Python
+# Para conectar ao PostgreSQL a partir do Python
 sqlalchemy
 psycopg2-binary
 
-#Gerenciar os arquivos
+# Gerenciar requisições HTTP (ainda útil para baixar arquivos)
 requests
-pypdf
-python-docx
