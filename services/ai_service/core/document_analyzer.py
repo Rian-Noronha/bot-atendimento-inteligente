@@ -3,8 +3,6 @@ import requests
 import io
 import re
 from typing import List
-from urllib.parse import urlparse
-import os
 
 
 from models.loader import embeddings_model
@@ -55,22 +53,46 @@ async def process_and_generate_chunks(request_data: DocumentProcessRequest) -> L
         clean_chunk = chunk_text.strip()
         if not clean_chunk:
             continue
+
+        # --- 1. VALORES PADRÃO (FALLBACK) ---
+        titulo_final = request_data.titulo
+        descricao_final = request_data.descricao
+        solucao_final = clean_chunk.lstrip('#').strip() 
+
+        # --- 2. EXTRAÇÃO DAS PARTES ESPECÍFICAS ---
+        # Extrai o Título
+        match_titulo = re.search(r'#\s*(.*?)(?:\n|Descrição:)', clean_chunk, re.IGNORECASE)
+        if match_titulo:
+            titulo_extraido = match_titulo.group(1).strip()
+            if titulo_extraido:
+                titulo_final = titulo_extraido
+
+        # Extrai a Descrição (COM A CORREÇÃO)
+        match_descricao = re.search(r'Descrição:(.*?)(?=\s*Desbloqueio:|$)', clean_chunk, re.DOTALL | re.IGNORECASE)
+        if match_descricao:
+            descricao_extraida = match_descricao.group(1).strip()
+            if descricao_extraida:
+                descricao_final = descricao_extraida
         
-        # O título é a primeira linha, removendo o '#' inicial.
-        specific_title = clean_chunk.split('\n', 1)[0].replace("#", "").strip()
-        
+        # Extrai APENAS a Solução/Desbloqueio
+        match_solucao = re.search(r'Desbloqueio:(.*)', clean_chunk, re.DOTALL | re.IGNORECASE)
+        if match_solucao:
+            solucao_extraida = match_solucao.group(1).strip()
+            if solucao_extraida:
+                solucao_final = solucao_extraida
+
+        # --- 3. GERAÇÃO DO EMBEDDING E DADOS FINAIS ---
         embedding = embeddings_model.embed_query(clean_chunk)
-        
+
         chunk_data = {
-            "titulo": request_data.titulo,
-            "solucao": clean_chunk,
-            # ... resto dos seus campos ...
-            "descricao": request_data.descricao,
+            "titulo": titulo_final,
+            "descricao": descricao_final,
+            "solucao": solucao_final,
             "subcategoria_id": request_data.subcategoria_id,
             "embedding": embedding,
             "urlArquivo": request_data.url_arquivo,
             "ativo": True
         }
         processed_chunks.append(chunk_data)
-    
+
     return processed_chunks
