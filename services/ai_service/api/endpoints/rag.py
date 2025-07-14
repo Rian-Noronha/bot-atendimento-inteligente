@@ -18,22 +18,25 @@ async def ask_question(request: AskRequest):
         print(f"A processar a pergunta: '{request.question}'")
         question_embedding = embeddings_model.embed_query(request.question)
 
-        # A query já ordena por similaridade, o mais relevante vem primeiro
+        # usar os parâmetros e buscar a descrição
         query = text("""
-            SELECT id, titulo, solucao, 1 - (embedding <=> :query_vector) AS similaridade
+            SELECT id, titulo, descricao, solucao, 1 - (embedding <=> :query_vector) AS similaridade
             FROM documentos
-            WHERE 1 - (embedding <=> :query_vector) > 0.6
+            WHERE 1 - (embedding <=> :query_vector) > :threshold
             ORDER BY similaridade DESC
-            LIMIT 3
+            LIMIT :top_k
         """)
         
         with engine.connect() as connection:
-            results = connection.execute(query, {"query_vector": str(question_embedding)}).fetchall()
+            results = connection.execute(
+                query, 
+                {
+                    "query_vector": str(question_embedding),
+                    "threshold": request.similarity_threshold,
+                    "top_k": request.top_k
+                }
+            ).mappings().fetchall() # Usar .mappings() para acessar colunas pelo nome
 
-        # ✅ PASSO 1: Preparar a variável para o ID do documento fonte
-        source_document_id = None
-
-        # Se não encontrarmos resultados, a resposta é genérica e não há fonte.
         if not results:
             print("Nenhum documento relevante encontrado.")
             return {
@@ -41,14 +44,13 @@ async def ask_question(request: AskRequest):
                 "source_document_id": None
             }
 
-        # ✅ PASSO 2: Capturar o ID do documento mais similar (o primeiro da lista)
-        # O ID é a primeira coluna (índice 0) da primeira linha (índice 0) dos resultados.
-        source_document_id = results[0][0]
+        source_document_id = results[0]['id'] # Acessando pelo nome da coluna
         print(f"Documento fonte mais relevante encontrado. ID: {source_document_id}")
 
-        # Monta o contexto para a IA com os documentos encontrados
+        # Contexto enriquecido com a descrição
         context = "\n\n---\n\n".join([
-            f"Fonte (ID: {row[0]}): \nTítulo: {row[1]}\nSolução: {row[2]}" for row in results
+            f"Fonte (ID: {row['id']}):\nTítulo: {row['titulo']}\nDescrição: {row['descricao']}\nSolução: {row['solucao']}" 
+            for row in results
         ])
         
         prompt_template = ChatPromptTemplate.from_template(
@@ -58,7 +60,6 @@ async def ask_question(request: AskRequest):
         
         answer = rag_chain.invoke({"context": context, "question": request.question})
         
-        # ✅ PASSO 3: Retornar a resposta e o ID do documento fonte
         return {
             "answer": answer,
             "source_document_id": source_document_id

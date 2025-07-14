@@ -81,9 +81,12 @@ async def process_and_generate_chunks(request_data: DocumentProcessRequest) -> L
             solucao_extraida = match_solucao.group(1).strip()
             if solucao_extraida:
                 solucao_final = solucao_extraida
+        
+        texto_para_embedding = f"Título: {titulo_final}\nDescrição: {descricao_final}\nSolução: {solucao_final}"
+        print(f"--- Gerando embedding para o texto: ---\n{texto_para_embedding}\n------------------------------------")
 
         # --- 3. GERAÇÃO DO EMBEDDING E DADOS FINAIS ---
-        embedding = embeddings_model.embed_query(clean_chunk)
+        embedding = embeddings_model.embed_query(texto_para_embedding)
 
         chunk_data = {
             "titulo": titulo_final,
