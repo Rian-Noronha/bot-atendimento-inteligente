@@ -60,6 +60,7 @@ async def process_and_generate_chunks(request_data: DocumentProcessRequest) -> L
         solucao_final = clean_chunk.lstrip('#').strip() 
 
         # --- 2. EXTRAÇÃO DAS PARTES ESPECÍFICAS ---
+        
         # Extrai o Título
         match_titulo = re.search(r'#\s*(.*?)(?:\n|Descrição:)', clean_chunk, re.IGNORECASE)
         if match_titulo:
@@ -67,14 +68,14 @@ async def process_and_generate_chunks(request_data: DocumentProcessRequest) -> L
             if titulo_extraido:
                 titulo_final = titulo_extraido
 
-        # Extrai a Descrição (COM A CORREÇÃO)
+        # Extrai a Descrição
         match_descricao = re.search(r'Descrição:(.*?)(?=\s*Desbloqueio:|$)', clean_chunk, re.DOTALL | re.IGNORECASE)
         if match_descricao:
             descricao_extraida = match_descricao.group(1).strip()
             if descricao_extraida:
                 descricao_final = descricao_extraida
         
-        # Extrai APENAS a Solução/Desbloqueio
+        # Extrai APENAS Desbloqueio
         match_solucao = re.search(r'Desbloqueio:(.*)', clean_chunk, re.DOTALL | re.IGNORECASE)
         if match_solucao:
             solucao_extraida = match_solucao.group(1).strip()
