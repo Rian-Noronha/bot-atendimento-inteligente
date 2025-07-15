@@ -1,5 +1,8 @@
 const { createClient } = require('redis');
-const redisClient = createClient();
+
+const redisClient = createClient({
+    url: 'redis://10.0.0.104:6379'
+});
 
 redisClient.on('connect', () => {
     console.log('Conectado ao Redis com sucesso!');
