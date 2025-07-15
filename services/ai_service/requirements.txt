@@ -1,4 +1,3 @@
-# Framework da API
 fastapi
 uvicorn[standard]
 
@@ -11,20 +10,14 @@ langchain-huggingface
 langchain-community
 langchain-text-splitters
 
-# Processamento de Documentos (aqui está a mudança)
+# Processamento de Documentos
 unstructured[all-docs]
-
-# Modelos de Embedding e Transformers 
 sentence-transformers
 torch
+torchvision
+torchaudio
 transformers
-
-# Ferramenta para carregar variáveis de ambiente
 python-dotenv
-
-# Para conectar ao PostgreSQL a partir do Python
 sqlalchemy
 psycopg2-binary
-
-# Gerenciar requisições HTTP (ainda útil para baixar arquivos)
 requests
