@@ -7,7 +7,7 @@ redisClient.on('connect', () => {
 });
 
 redisClient.on('error', (err) => {
-    console.error('❌ Erro na conexão com o Redis:', err);
+    console.error('Erro na conexão com o Redis:', err);
 });
 
 //auto-executável para garantir que ele tente conectar assim que o arquivo for carregado.
