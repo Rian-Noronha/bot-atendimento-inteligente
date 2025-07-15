@@ -1,7 +1,6 @@
 'use strict';
 const { Model } = require('sequelize');
 module.exports = (sequelize, DataTypes) => {
-  // CORRIGIDO: Nome da classe para o singular
   class Documento extends Model {
     static associate(models) {
       this.belongsTo(models.Subcategoria, {
@@ -13,12 +12,17 @@ module.exports = (sequelize, DataTypes) => {
         foreignKey: 'documento_id',
         as: 'palavrasChave'
       });
+
+      this.hasMany(models.ChatResposta, {
+        foreignKey: 'documento_fonte', 
+        as: 'respostas'              
+      });
     }
   }
   Documento.init({
     titulo: DataTypes.STRING,
     descricao: DataTypes.STRING,
-    solucao: DataTypes.STRING,
+    solucao: DataTypes.TEXT,
     ativo: DataTypes.BOOLEAN,
     urlArquivo: DataTypes.STRING,
     tipoDocumento: DataTypes.STRING,
@@ -28,7 +32,7 @@ module.exports = (sequelize, DataTypes) => {
     }
   }, {
     sequelize,
-    modelName: 'Documento', // CORRIGIDO: Nome do model para o singular
+    modelName: 'Documento',
     tableName: 'documentos'
   });
   return Documento;

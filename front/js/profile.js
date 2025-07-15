@@ -1,10 +1,17 @@
-// Importe todos os serviços de API necessários
+// js/profile.js
+
+// 1. Importa os serviços de API necessários para a página
 import { apiAuthService } from './services/apiAuthService.js';
 import { apiUsuarioService } from './services/apiUsuarioService.js';
 
-document.addEventListener('DOMContentLoaded', () => {
+// 2. Importa o nosso novo gerenciador de sessão centralizado
+import { startSessionManagement } from './utils/sessionManager.js';
 
-    // --- Seleção de Elementos ---
+document.addEventListener('DOMContentLoaded', () => {
+    // 3. Inicia toda a lógica de segurança (timeout, abas, etc.) com uma única chamada
+    startSessionManagement();
+
+    // --- SELEÇÃO DE ELEMENTOS ESPECÍFICOS DA PÁGINA ---
     const hamburger = document.getElementById('hamburger');
     const aside = document.querySelector('aside');
     const profileForm = document.getElementById('profile-form');
@@ -18,9 +25,35 @@ document.addEventListener('DOMContentLoaded', () => {
     // Variável para guardar os dados do usuário que virão da API
     let currentUser = null;
 
-    // --- Seu código de timeout e sessão (mantido) ---
-    // ... (o código de timeout e sessão entre abas que você já tem está perfeito aqui)
+    // --- LÓGICA ESPECÍFICA DA PÁGINA ---
 
+    // Lógica do Hamburger Menu
+    if (hamburger && aside) {
+        hamburger.addEventListener('click', () => aside.classList.toggle('open'));
+        document.addEventListener('click', (event) => {
+            if (aside.classList.contains('open') && !aside.contains(event.target) && !hamburger.contains(event.target)) {
+                aside.classList.remove('open');
+            }
+        });
+    }
+
+    // Lógica do botão de logout
+    if (logoutButton) {
+        logoutButton.addEventListener('click', async (event) => {
+            event.preventDefault();
+            try {
+                await apiAuthService.logout();
+            } catch (error) {
+                console.error("Erro ao notificar o servidor sobre o logout:", error);
+            } finally {
+                // A lógica de limpar o storage e redirecionar já está no sessionManager,
+                // mas podemos garantir que aconteça aqui também para uma resposta imediata.
+                localStorage.clear();
+                sessionStorage.clear();
+                window.location.href = '../index.html';
+            }
+        });
+    }
 
     /**
      * Busca os dados do usuário logado na API e preenche o formulário.
@@ -33,6 +66,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (currentUser) {
                 nameInput.value = currentUser.nome;
                 emailInput.value = currentUser.email;
+                // O perfil agora vem aninhado no objeto
                 accessTypeInput.value = currentUser.perfil ? currentUser.perfil.nome : 'Não definido';
 
                 // Desabilita a troca de perfil se o usuário não for admin
@@ -41,11 +75,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
         } catch (error) {
+            // O handleResponseError no serviço de API já irá deslogar o usuário em caso de 401.
+            // Aqui podemos apenas logar o erro.
             console.error('Erro ao carregar dados do perfil:', error);
-            alert('Não foi possível carregar seus dados. Sua sessão pode ter expirado.');
-            // Se falhar (ex: token inválido), desloga o usuário
-            localStorage.clear();
-            window.location.href = '../index.html';
+            alert('Não foi possível carregar seus dados. Verifique sua conexão e tente novamente.');
         }
     }
 
@@ -55,12 +88,9 @@ document.addEventListener('DOMContentLoaded', () => {
     async function handleProfileUpdate(event) {
         event.preventDefault();
         
-        // Pega os dados do formulário
         const updatedUserData = {
             nome: nameInput.value.trim(),
             email: emailInput.value.trim(),
-            // Inclui o perfil_id se o campo estiver habilitado (só para admins)
-            perfil_id: accessTypeInput.disabled ? undefined : parseInt(accessTypeInput.value)
         };
 
         const senhaAtual = currentPasswordInput.value;
@@ -72,12 +102,16 @@ document.addEventListener('DOMContentLoaded', () => {
             submitButton.textContent = 'Salvando...';
 
             // 1. Atualiza os dados básicos (nome e e-mail)
+            // A rota de atualizar usuário é diferente da de atualizar senha
             await apiUsuarioService.atualizar(currentUser.id, updatedUserData);
             
             // 2. Se o campo de nova senha foi preenchido, tenta atualizar a senha
             if (novaSenha) {
                 if (!senhaAtual) {
                     throw new Error('Para alterar a senha, você precisa fornecer sua senha atual.');
+                }
+                if (novaSenha.length < 6) {
+                    throw new Error('A nova senha deve ter no mínimo 6 caracteres.');
                 }
                 await apiAuthService.updatePassword(senhaAtual, novaSenha);
             }
@@ -97,28 +131,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-
-    // --- Lógica do Hamburger Menu ---
-    if (hamburger && aside) { /* ...código existente... */ }
-
-
-    // --- Lógica de Logout ---
-    if (logoutButton) {
-        logoutButton.addEventListener('click', async (event) => {
-            event.preventDefault();
-            try {
-                await apiAuthService.logout();
-            } catch (error) {
-                console.error('Erro ao encerrar sessão no servidor:', error);
-            } finally {
-                localStorage.clear();
-                sessionStorage.clear();
-                window.location.href = '../index.html';
-            }
-        });
-    }
-
-    // --- Inicialização ---
+    // --- INICIALIZAÇÃO ---
     inicializarPagina(); // Busca dados reais em vez de usar o mock
     profileForm.addEventListener('submit', handleProfileUpdate); 
 });

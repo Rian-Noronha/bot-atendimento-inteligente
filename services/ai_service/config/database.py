@@ -1,6 +1,5 @@
-# core/database.py
 from sqlalchemy import create_engine
-from .config import settings
+from .settings import settings
 
 print("A estabelecer conexão com a base de dados...")
 

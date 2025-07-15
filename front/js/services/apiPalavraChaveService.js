@@ -1,36 +1,14 @@
-const API_URL = 'http://localhost:3000/api';
-
-function getAuthHeaders() {
-    const token = localStorage.getItem('authToken');
-    const headers = {
-        'Content-Type': 'application/json',
-    };
-    if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-    }
-    return headers;
-}
-
-async function handleResponseError(response) {
-    if (response.status === 401) {
-        alert('Sua sessão expirou ou é inválida. Por favor, faça login novamente.');
-        localStorage.clear();
-        sessionStorage.clear();
-        window.location.href = '../index.html';
-        throw new Error('Não autorizado.');
-    }
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.message || 'Ocorreu um erro na requisição.');
-}
-
-
+// 1. Importa as funções compartilhadas do nosso módulo de utilitários
+import { getAuthHeaders, handleResponseError } from '../utils/apiUtils.js';
 
 export const apiPalavraChaveService = {
     /**
-     * Envia um array de strings (palavras) para o backend.
+     * Envia um array de strings (palavras) para o backend para serem encontradas ou criadas.
+     * @param {string[]} palavras - Um array de palavras.
      */
     async encontrarOuCriarLote(palavras) {
-        const response = await fetch(`${API_URL}/palavras-chave/lote`, {
+        // 2. Usa um caminho relativo que será interceptado pelo proxy do Vite
+        const response = await fetch(`/api/palavras-chave/lote`, {
             method: 'POST',
             headers: getAuthHeaders(), 
             body: JSON.stringify({ palavras: palavras }) 
@@ -42,5 +20,4 @@ export const apiPalavraChaveService = {
 
         return await response.json();
     }
-
 };

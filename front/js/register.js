@@ -1,14 +1,24 @@
+// 1. Importa os serviços de API necessários para a página
 import { apiUsuarioService } from './services/apiUsuarioService.js';
-import { apiPerfilService } from './services/apiPerfilService.js'; // Para carregar os tipos de acesso
+import { apiPerfilService } from './services/apiPerfilService.js';
+import { startSessionManagement } from './utils/sessionManager.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
+    // 3. Inicia toda a lógica de segurança (timeout, abas, etc.) com uma única chamada
+    startSessionManagement();
+
+    // --- SELEÇÃO DE ELEMENTOS ---
+    const registerForm = document.getElementById('register-form'); // Assumindo que o form tem este ID
     const regNomeInput = document.getElementById('reg-nome');
     const regEmailInput = document.getElementById('reg-email');
     const regSenhaInput = document.getElementById('reg-senha');
-    const regTipoAcessoSelect = document.getElementById('reg-tipo-acesso'); // Seleciona o SELECT do REGISTRO
+    const regTipoAcessoSelect = document.getElementById('reg-tipo-acesso');
     const btnCadastrar = document.getElementById('btn-cadastrar');
     const backButton = document.querySelector('.back-button');
 
+    /**
+     * Carrega os perfis disponíveis da API e os popula no campo de seleção.
+     */
     async function carregarPerfis() {
         try {
             const perfis = await apiPerfilService.pegarTodos();
@@ -16,79 +26,61 @@ document.addEventListener('DOMContentLoaded', async () => {
             
             perfis.forEach(perfil => {
                 const option = document.createElement('option');
-                option.value = perfil.id; // Define o ID como valor
-                option.textContent = perfil.nome; // Define o nome como texto visível
+                option.value = perfil.id;
+                option.textContent = perfil.nome;
                 regTipoAcessoSelect.appendChild(option);
             });
         } catch (error) {
             console.error("Erro ao carregar perfis:", error);
-            alert("Não foi possível carregar os tipos de acesso. Tente novamente mais tarde.");
-            btnCadastrar.disabled = true;
+            alert("Não foi possível carregar os tipos de acesso. A página será recarregada.");
+            window.location.reload();
         }
     }
 
-   
-    await carregarPerfis(); 
-
-
-    // Adiciona o listener para o botão de cadastro
-    btnCadastrar.addEventListener('click', async (event) => {
-        event.preventDefault(); // Impede o comportamento padrão de envio do formulário
+    /**
+     * Lida com o envio do formulário de cadastro.
+     */
+    registerForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
 
         const nome = regNomeInput.value.trim();
         const email = regEmailInput.value.trim();
         const senha = regSenhaInput.value.trim();
-        const perfil_id = parseInt(regTipoAcessoSelect.value); // Pega o ID numérico
+        const perfil_id = parseInt(regTipoAcessoSelect.value, 10);
 
-        // Validações básicas no frontend
-        if (!nome || !email || !senha) {
+        if (!nome || !email || !senha || isNaN(perfil_id)) {
             alert('Por favor, preencha todos os campos obrigatórios.');
             return;
         }
-
-        if (isNaN(perfil_id) || perfil_id === 0) {
-            alert('Por favor, selecione um tipo de acesso válido.');
-            return;
-        }
         
-        // Validação de email simples (tornar mais robusta)
-        if (!email.includes('@') || !email.includes('.')) {
-            alert('Por favor, insira um e-mail válido.');
-            return;
-        }
+        btnCadastrar.disabled = true;
+        btnCadastrar.textContent = 'A cadastrar...';
 
         try {
-            // Objeto com os dados do novo usuário
-            const novoUsuario = {
-                nome: nome,
-                email: email,
-                senha: senha,
-                perfil_id: perfil_id,
-                ativo: true
-            };
+            const novoUsuario = { nome, email, senha, perfil_id, ativo: true };
+            await apiUsuarioService.criar(novoUsuario);
 
-            const usuarioCriado = await apiUsuarioService.criar(novoUsuario);
-
-            alert('Usuário cadastrado com sucesso!');
-            console.log('Usuário criado:', usuarioCriado);
-
-            regNomeInput.value = '';
-            regEmailInput.value = '';
-            regSenhaInput.value = '';
-            regTipoAcessoSelect.value = ''; // Reseta para a opção padrão
-            
+            alert('Usuário cadastrado com sucesso! A redirecionar para a lista de usuários.');
             window.location.href = './users.html'; 
 
         } catch (error) {
             console.error('Erro ao cadastrar usuário:', error);
-            alert(`Erro ao cadastrar usuário: ${error.message || 'Verifique os dados e tente novamente.'}`);
+            alert(`Erro ao cadastrar usuário: ${error.message}`);
+        } finally {
+            btnCadastrar.disabled = false;
+            btnCadastrar.textContent = 'Cadastrar Usuário';
         }
     });
 
+    // Listener para o botão de voltar
     if (backButton) {
         backButton.addEventListener('click', (e) => {
             e.preventDefault();
             window.location.href = './users.html';
         });
     }
+
+    // --- INICIALIZAÇÃO ---
+    // Carrega os perfis assim que a página é carregada
+    await carregarPerfis();
 });

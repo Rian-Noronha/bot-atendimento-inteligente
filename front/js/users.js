@@ -1,9 +1,16 @@
-// Importa os serviços necessários no topo do ficheiro.
+// 1. Importa os serviços de API necessários para a página
 import { apiUsuarioService } from './services/apiUsuarioService.js';
 import { apiPerfilService } from './services/apiPerfilService.js';
+import { apiAuthService } from './services/apiAuthService.js';
+
+// 2. Importa o nosso novo gerenciador de sessão centralizado
+import { startSessionManagement } from './utils/sessionManager.js';
 
 document.addEventListener('DOMContentLoaded', () => {
-    // --- SELEÇÃO DE ELEMENTOS ---
+    // 3. Inicia toda a lógica de segurança (timeout, abas, etc.) com uma única chamada
+    startSessionManagement();
+
+    // --- SELEÇÃO DE ELEMENTOS ESPECÍFICOS DA PÁGINA ---
     const hamburger = document.getElementById('hamburger');
     const aside = document.querySelector('aside');
     const userSearchInput = document.getElementById('user-search-input');
@@ -11,6 +18,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const userTableBody = document.querySelector('#user-table tbody');
     const noUsersMessage = document.getElementById('no-users-message');
     const addUserButton = document.getElementById('add-user-button');
+    const logoutButton = document.getElementById('logout-btn');
+
+    // Seletores do Modal de Edição
     const editUserModal = document.getElementById('edit-user-modal');
     const editUserForm = document.getElementById('edit-user-form');
     const editUserId = document.getElementById('edit-user-id');
@@ -19,45 +29,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const editUserType = document.getElementById('edit-user-type');
     const btnCancel = editUserModal.querySelector('.btn-cancel');
 
-    // Variável para guardar os dados da API. Declarada com 'let' para permitir reatribuição.
+    // Variável para guardar os dados da API
     let allUsers = [];
 
-    // --- LÓGICA DE SESSÃO E TIMEOUT (sem alterações) ---
-    const TIMEOUT_DURATION = 5 * 60 * 1000;
-    let timeoutInterval;
-    function resetTimeoutTimer() { localStorage.setItem('last_activity_time', Date.now()); }
-    function logoutUser() {
-        clearInterval(timeoutInterval);
-        localStorage.clear();
-        sessionStorage.clear();
-        alert('A sua sessão expirou por inatividade. Por favor, inicie sessão novamente.');
-        window.location.href = '../index.html';
-    }
-    function checkTimeout() {
-        const lastActivityTime = parseInt(localStorage.getItem('last_activity_time') || '0', 10);
-        if (Date.now() - lastActivityTime > TIMEOUT_DURATION) {
-            logoutUser();
-        }
-    }
-    function startTimeoutMonitoring() {
-        const activityEvents = ['mousemove', 'mousedown', 'keypress', 'scroll', 'touchstart'];
-        activityEvents.forEach(event => window.addEventListener(event, resetTimeoutTimer));
-        timeoutInterval = setInterval(checkTimeout, 5000);
-    }
-    startTimeoutMonitoring();
-    const currentSessionId = localStorage.getItem('active_session_id');
-    if (!sessionStorage.getItem('my_tab_session_id')) {
-        sessionStorage.setItem('my_tab_session_id', currentSessionId);
-    } else if (sessionStorage.getItem('my_tab_session_id') !== currentSessionId) {
-        alert('A sua sessão foi encerrada noutra aba.');
-        window.location.href = '../index.html';
-    }
-    window.addEventListener('storage', (event) => {
-        if (event.key === 'active_session_id' && event.newValue !== sessionStorage.getItem('my_tab_session_id')) {
-            alert('A sua sessão foi encerrada porque iniciou sessão numa nova janela.');
-            window.location.href = '../index.html';
-        }
-    });
+    // --- LÓGICA ESPECÍFICA DA PÁGINA ---
+
+    // Lógica do Hamburger Menu
     if (hamburger && aside) {
         hamburger.addEventListener('click', () => aside.classList.toggle('open'));
         document.addEventListener('click', (event) => {
@@ -67,24 +44,42 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Lógica do botão de logout
+    if (logoutButton) {
+        logoutButton.addEventListener('click', async (event) => {
+            event.preventDefault();
+            try {
+                await apiAuthService.logout();
+            } catch (error) {
+                console.error("Erro ao notificar o servidor sobre o logout:", error);
+            } finally {
+                localStorage.clear();
+                sessionStorage.clear();
+                window.location.href = '../index.html';
+            }
+        });
+    }
+
     /**
-     * Busca todos os utilizadores através do serviço de API e renderiza a tabela.
+     * Busca e renderiza os usuários.
      */
     async function fetchAndRenderUsers() {
         try {
+            noUsersMessage.textContent = 'A carregar utilizadores...';
+            noUsersMessage.style.display = 'block';
+            userTableBody.style.display = 'none';
+
             const usersFromAPI = await apiUsuarioService.pegarTodos();
-            allUsers = usersFromAPI; 
-            renderUsers(); 
+            allUsers = usersFromAPI;
+            renderUsers();
         } catch (error) {
             console.error('Falha ao carregar utilizadores:', error);
             noUsersMessage.textContent = 'Falha ao carregar dados do servidor. Tente novamente mais tarde.';
-            noUsersMessage.style.display = 'block';
-            userTableBody.style.display = 'none';
         }
     }
 
     /**
-     * Renderiza os utilizadores na tabela a partir da variável local 'allUsers'.
+     * Renderiza a tabela com base nos dados filtrados.
      */
     function renderUsers() {
         userTableBody.innerHTML = '';
@@ -104,6 +99,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (filteredUsers.length === 0) {
+            noUsersMessage.textContent = 'Nenhum utilizador encontrado.';
             noUsersMessage.style.display = 'block';
             userTableBody.style.display = 'none';
         } else {
@@ -115,8 +111,6 @@ document.addEventListener('DOMContentLoaded', () => {
             filteredUsers.forEach(user => {
                 const row = userTableBody.insertRow();
                 row.dataset.userId = user.id;
-                
-                // CORRIGIDO: Usa o objeto 'perfil' que vem da API.
                 const perfilNome = user.perfil ? user.perfil.nome : 'N/A';
 
                 row.innerHTML = `
@@ -133,7 +127,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /**
-     * Abre o modal de edição e preenche os dados.
+     * Abre e preenche o modal de edição.
      */
     async function openEditModal(userId) {
         const user = allUsers.find(u => u.id === userId);
@@ -144,30 +138,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
             try {
                 const perfis = await apiPerfilService.pegarTodos();
-                // Limpa e adiciona uma opção padrão antes de preencher
-                editUserType.innerHTML = '<option value="" disabled>Carregando Perfis...</option>'; // Opcional: manter "Carregando" até preencher
+                editUserType.innerHTML = '<option value="" disabled>A carregar Perfis...</option>';
                 
                 perfis.forEach(perfil => {
                     const option = document.createElement('option');
                     option.value = perfil.id;
                     option.textContent = perfil.nome;
-                    // CORRIGIDO: O backend retorna 'perfil_id'. Usamos essa chave para selecionar a opção correta.
                     if (user.perfil_id === perfil.id) {
                         option.selected = true;
                     }
                     editUserType.appendChild(option);
                 });
-                // Se nenhum perfil foi selecionado ou user.perfil_id era nulo, garanta que uma opção padrão seja selecionada.
-                // Isso pode ser feito adicionando uma opção padrão com selected, e depois as dinâmicas.
-                if (!user.perfil_id || !editUserType.value) { // Se não houver perfil_id ou o select ainda não tiver valor
-                     editUserType.querySelector('option[value=""]').selected = true; // Seleciona a opção "Selecione..."
-                }
-
             } catch (error) {
                 console.error("Erro ao buscar perfis para o modal:", error);
-                // Exemplo de como lidar com o erro no modal: desabilitar o select
                 editUserType.innerHTML = '<option value="" disabled selected>Erro ao carregar perfis</option>';
-                editUserType.disabled = true;
             }
 
             editUserModal.style.display = 'flex';
@@ -179,24 +163,20 @@ document.addEventListener('DOMContentLoaded', () => {
         editUserForm.reset();
     }
 
+    // Lida com a submissão do formulário de edição
     editUserForm.addEventListener('submit', async (event) => {
         event.preventDefault();
         const userId = parseInt(editUserId.value);
-        const selectedPerfilId = parseInt(editUserType.value); // Obtém o valor selecionado
+        const selectedPerfilId = parseInt(editUserType.value);
 
         const updatedData = {
             nome: editUserName.value.trim(),
             email: editUserEmail.value.trim(),
-            perfil_id: selectedPerfilId // Usa o valor inteiro parseado
+            perfil_id: selectedPerfilId
         };
 
-        if (!updatedData.nome || !updatedData.email) {
-            alert('Nome e e-mail não podem estar vazios.');
-            return;
-        }
-
-        if (isNaN(selectedPerfilId)) {
-            alert('Por favor, selecione um tipo de perfil.');
+        if (!updatedData.nome || !updatedData.email || isNaN(selectedPerfilId)) {
+            alert('Todos os campos são obrigatórios.');
             return;
         }
 
@@ -207,12 +187,11 @@ document.addEventListener('DOMContentLoaded', () => {
             fetchAndRenderUsers();
         } catch (error) {
             console.error(error);
-            alert('Ocorreu um erro ao atualizar o utilizador.');
+            alert(`Ocorreu um erro ao atualizar o utilizador: ${error.message}`);
         }
     });
 
-    btnCancel.addEventListener('click', closeEditModal);
-
+    // Lida com os cliques na tabela para editar ou deletar
     userTableBody.addEventListener('click', async (event) => {
         const targetButton = event.target.closest('button');
         if (!targetButton) return;
@@ -230,22 +209,21 @@ document.addEventListener('DOMContentLoaded', () => {
                     fetchAndRenderUsers();
                 } catch (error) {
                     console.error(error);
-                    alert('Ocorreu um erro ao excluir o utilizador.');
+                    alert(`Ocorreu um erro ao excluir o utilizador: ${error.message}`);
                 }
             }
         }
     });
 
+    // --- Outros Listeners e Inicialização ---
     if (addUserButton) {
         addUserButton.addEventListener('click', () => {
             window.location.href = './register.html';
         });
     }
-    
+    btnCancel.addEventListener('click', closeEditModal);
     if (userSearchInput) userSearchInput.addEventListener('input', renderUsers);
     if (numUsersDisplayInput) numUsersDisplayInput.addEventListener('input', renderUsers);
 
-    // --- INICIALIZAÇÃO ---
-    // CORRIGIDO: Chama a função com o nome correto.
     fetchAndRenderUsers();
 });

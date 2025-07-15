@@ -7,7 +7,7 @@
   --cor-secundaria-1: #db2777;
   --cor-secundaria-2: #fb7185;
   --cor-verdeforte: #195332;
-  --cor-chamativa: #678876;
+  --cor-chamativa: #8f9e96;
   --cor-fonte: #000;
   --cor-fonte-fraca: #444;
   --cor-fonte-alt: #fff;
@@ -807,7 +807,7 @@ body.upload-page {
 }
 
 
-.back-button {
+#back-button {
   position: absolute;
   /* Posição absoluta dentro do upload-container */
   top: 15px;
@@ -831,14 +831,14 @@ body.upload-page {
   /* Garante que ele fique acima de outros elementos */
 }
 
-.back-button:hover {
+#back-button:hover {
   background-color: var(--cor-chamativa);
   /* Mudar cor ao passar o mouse */
   color: var(--cor-fonte-alt);
   text-decoration: none;
 }
 
-.back-button i {
+#back-button i {
   font-size: 1.2rem;
   /* Tamanho do ícone */
 }
@@ -1675,7 +1675,7 @@ body.upload-page {
     margin-top: 20px;
   }
 
-  .card-pergunta .back-button {
+  .card-pergunta #back-button {
     top: 10px;
     left: 10px;
     font-size: 0.8rem;
@@ -1954,7 +1954,7 @@ body.upload-page {
     /* Espaço para o botão de voltar */
   }
 
-  .card-pergunta .back-button {
+  .card-pergunta #back-button {
     top: 8px;
     left: 8px;
     font-size: 0.75rem;
@@ -2380,14 +2380,14 @@ body.upload-page {
 /* Mobile (abaixo de 768px) */
 @media (max-width: 767px) {
 
-  .back-button {
+  #back-button {
     top: 10px;
     left: 10px;
     padding: 6px 10px;
     font-size: 0.8rem;
   }
 
-  .back-button i {
+  #back-button i {
     font-size: 1rem;
   }
 
@@ -2519,7 +2519,7 @@ body.upload-page {
 /* Orientação Paisagem para dispositivos móveis (max-width 767px e landscape) */
 @media (max-width: 767px) and (orientation: landscape) {
 
-  .back-button {
+  #back-button {
     top: 10px;
     /* Mantido em 10px para paisagem */
     left: 10px;
@@ -2527,7 +2527,7 @@ body.upload-page {
     font-size: 0.8rem;
   }
 
-  .back-button i {
+  #back-button i {
     font-size: 0.9rem;
   }
 
@@ -2621,7 +2621,7 @@ body.upload-page {
     /* Ajuste para o botão de voltar */
   }
 
-  .card-pergunta .back-button {
+  .card-pergunta #back-button {
     top: 5px;
     left: 5px;
     font-size: 0.7rem;
