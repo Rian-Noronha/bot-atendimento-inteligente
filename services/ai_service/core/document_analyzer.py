@@ -12,6 +12,7 @@ from schemas.document import DocumentProcessRequest
 from unstructured.partition.auto import partition
 from unstructured.documents.elements import Element
 
+
 async def process_and_generate_chunks(request_data: DocumentProcessRequest) -> List[dict]:
     """
     Processa um documento, divide-o em chunks e gera embeddings para todos 

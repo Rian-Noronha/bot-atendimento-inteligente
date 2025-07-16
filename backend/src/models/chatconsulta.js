@@ -10,7 +10,7 @@ module.exports = (sequelize, DataTypes) => {
     }
   }
   ChatConsulta.init({
-    pergunta: DataTypes.STRING
+    pergunta: DataTypes.TEXT
   }, {
     sequelize,
     modelName: 'ChatConsulta',
