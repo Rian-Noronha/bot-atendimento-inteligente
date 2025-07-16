@@ -16,11 +16,12 @@ class Settings(BaseSettings):
     DB_PORT: int
     DB_DATABASE: str
 
-    # --- Chaves de API (Obrigatória) ---
+    # --- Chaves de API
     GROQ_API_KEY: str
+    GOOGLE_API_KEY: str 
 
-    # --- Configurações do Modelo (com valores padrão) ---
-    EMBEDDINGS_MODEL_NAME: str = "sentence-transformers/all-mpnet-base-v2"
+    # --- Configurações dos modelos
+    EMBEDDINGS_MODEL_NAME: str = "models/embedding-001" 
     LLM_MODEL_NAME: str = "llama-3.1-8b-instant"
 
     # Propriedade para construir a URL de conexão dinamicamente
@@ -29,8 +30,6 @@ class Settings(BaseSettings):
         """Constrói a URL de conexão do SQLAlchemy a partir das variáveis."""
         return f"postgresql://{self.DB_USER}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_DATABASE}"
 
-# Tenta criar a instância de configurações.
-# Se alguma variável obrigatória estiver em falta no .env, isto irá falhar.
 try:
     settings = Settings()
 except Exception as e:

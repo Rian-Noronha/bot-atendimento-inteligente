@@ -1,23 +1,20 @@
+# Framework da API
 fastapi
 uvicorn[standard]
 
 # Frameworks de IA e Orquestração
 langchain
-langgraph
-langsmith
 langchain-groq
-langchain-huggingface
-langchain-community
-langchain-text-splitters
+
+# API de IA do Google para Embeddings
+google-generativeai
 
 # Processamento de Documentos
 unstructured[all-docs]
-sentence-transformers
-torch
-torchvision
-torchaudio
-transformers
+
+# Ferramentas de Ambiente e Conexão
 python-dotenv
 sqlalchemy
 psycopg2-binary
+pgvector
 requests

@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const inputPergunta = document.getElementById('input-pergunta');
     const askButton = document.getElementById('ask-button');
     const answerArea = document.getElementById('answer-area');
+    const sourceLinkArea = document.getElementById('source-link-area');
     const feedbackSection = document.getElementById('feedback-section');
     const btnFeedbackSim = document.getElementById('btn-feedback-sim');
     const btnFeedbackNao = document.getElementById('btn-feedback-nao');
@@ -128,6 +129,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         askButton.disabled = true;
         answerArea.value = 'Buscando a melhor resposta...';
+        sourceLinkArea.style.display = 'none';
         feedbackSection.style.display = 'none';
         feedbackStatus.textContent = '';
         btnFeedbackSim.disabled = false;
@@ -139,6 +141,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
             currentRespostaId = respostaCompleta.resposta_id;
             answerArea.value = respostaCompleta.answer;
+
+            if (respostaCompleta.url_fonte) {
+                sourceLinkArea.innerHTML = `<b>Fonte:</b> <a href="${respostaCompleta.url_fonte}" target="_blank" rel="noopener noreferrer">${respostaCompleta.titulo_fonte}</a>`;
+                sourceLinkArea.style.display = 'block';
+            }
+
             feedbackSection.style.display = 'block';
             
         } catch (error) {

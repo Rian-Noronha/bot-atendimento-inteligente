@@ -9,7 +9,8 @@ module.exports = (sequelize, DataTypes) => {
     }
   }
   ChatResposta.init({
-    texto_resposta: DataTypes.STRING(500)
+    texto_resposta: DataTypes.STRING(500),
+    url_fonte: DataTypes.STRING
   }, {
     sequelize,
     modelName: 'ChatResposta',
