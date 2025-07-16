@@ -4,7 +4,7 @@ from typing import List, Optional
 # Modelo para a requisição de pergunta ao chatbot
 class AskRequest(BaseModel):
     question: str
-    similarity_threshold: Optional[float] = Field(0.70, gt=0, le=1)
+    similarity_threshold: Optional[float] = Field(0.75, gt=0, le=1)
     top_k: Optional[int] = Field(3, gt=0, le=10) 
 
 # --- Novo Schema para o Processamento de Documentos (com validador V2) ---

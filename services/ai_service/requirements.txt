@@ -4,27 +4,17 @@ uvicorn[standard]
 
 # Frameworks de IA e Orquestração
 langchain
-langgraph
-langsmith
 langchain-groq
-langchain-huggingface
-langchain-community
-langchain-text-splitters
 
-# Processamento de Documentos (aqui está a mudança)
+# API de IA do Google para Embeddings
+google-generativeai
+
+# Processamento de Documentos
 unstructured[all-docs]
 
-# Modelos de Embedding e Transformers 
-sentence-transformers
-torch
-transformers
-
-# Ferramenta para carregar variáveis de ambiente
+# Ferramentas de Ambiente e Conexão
 python-dotenv
-
-# Para conectar ao PostgreSQL a partir do Python
 sqlalchemy
 psycopg2-binary
-
-# Gerenciar requisições HTTP (ainda útil para baixar arquivos)
+pgvector
 requests

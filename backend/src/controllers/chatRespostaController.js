@@ -3,7 +3,8 @@ const { ChatResposta, ChatConsulta, Documento } = require('../models');
 //nova resposta associada a uma consulta
 exports.criarResposta = async (req, res) => {
     try {
-        const { texto_resposta, consulta_id, documento_fonte } = req.body;
+        // 1. Extrai o novo campo 'url_fonte' do corpo da requisição
+        const { texto_resposta, consulta_id, documento_fonte, url_fonte } = req.body;
 
         if (!texto_resposta || !consulta_id) {
             return res.status(400).json({ message: 'Os campos "texto_resposta" e "consulta_id" são obrigatórios.' });
@@ -23,10 +24,12 @@ exports.criarResposta = async (req, res) => {
             }
         }
 
+        // 2. Adiciona 'url_fonte' ao objeto que será salvo no banco
         const novaResposta = await ChatResposta.create({
             texto_resposta,
             consulta_id,
-            documento_fonte
+            documento_fonte,
+            url_fonte // <<-- CAMPO ADICIONADO AQUI
         });
 
         res.status(201).json(novaResposta);

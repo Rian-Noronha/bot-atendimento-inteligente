@@ -20,6 +20,8 @@ exports.criarConsultaEObterResposta = async (req, res) => {
 
         let textoRespostaIA;
         let documentoFonteId;
+        let urlFonte;
+        let tituloFonte;
 
         if (cachedResponse) {
             // CACHE HIT! A resposta foi encontrada no cache.
@@ -27,6 +29,8 @@ exports.criarConsultaEObterResposta = async (req, res) => {
             const aiData = JSON.parse(cachedResponse);
             textoRespostaIA = aiData.answer;
             documentoFonteId = aiData.source_document_id;
+            urlFonte = aiData.source_document_url;
+            tituloFonte = aiData.source_document_title;
         } else {
             // CACHE MISS! A resposta não está no cache.
             console.log(`[Node.js] CACHE MISS. Repassando pergunta para a IA: "${pergunta}"`);
@@ -36,6 +40,9 @@ exports.criarConsultaEObterResposta = async (req, res) => {
             
             textoRespostaIA = responseIA.data.answer;
             documentoFonteId = responseIA.data.source_document_id;
+            urlFonte = responseIA.data.source_document_url; 
+            tituloFonte = responseIA.data.source_document_title;
+            
 
             if (!textoRespostaIA) {
                 throw new Error("O serviço de IA não retornou uma resposta de texto válida.");
@@ -60,14 +67,17 @@ exports.criarConsultaEObterResposta = async (req, res) => {
         const novaResposta = await ChatResposta.create({
             texto_resposta: textoRespostaIA,
             consulta_id: novaConsulta.id,
-            documento_fonte: documentoFonteId
+            documento_fonte: documentoFonteId,
+            url_fonte: urlFonte
         }, { transaction: t });
 
         await t.commit();
 
         res.status(201).json({
             answer: novaResposta.texto_resposta,
-            resposta_id: novaResposta.id 
+            resposta_id: novaResposta.id,
+            url_fonte: novaResposta.url_fonte,
+            titulo_fonte: tituloFonte
         });
 
     } catch (error) {
