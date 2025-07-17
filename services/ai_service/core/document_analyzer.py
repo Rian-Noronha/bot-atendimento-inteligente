@@ -55,11 +55,11 @@ async def process_and_generate_chunks(request_data: DocumentProcessRequest) -> L
         if match_titulo and match_titulo.group(1).strip():
             titulo_final = match_titulo.group(1).strip()
 
-        match_descricao = re.search(r'Descrição:(.*?)(?=\s*Desbloqueio:|$)', clean_chunk, re.DOTALL | re.IGNORECASE)
+        match_descricao = re.search(r'Descrição:(.*?)(?=\s*Solução:|$)', clean_chunk, re.DOTALL | re.IGNORECASE)
         if match_descricao and match_descricao.group(1).strip():
             descricao_final = match_descricao.group(1).strip()
         
-        match_solucao = re.search(r'Desbloqueio:(.*)', clean_chunk, re.DOTALL | re.IGNORECASE)
+        match_solucao = re.search(r'Solução:(.*)', clean_chunk, re.DOTALL | re.IGNORECASE)
         if match_solucao and match_solucao.group(1).strip():
             solucao_final = match_solucao.group(1).strip()
         
@@ -78,7 +78,6 @@ async def process_and_generate_chunks(request_data: DocumentProcessRequest) -> L
 
     print(f"--- Gerando embeddings para {len(texts_for_embedding)} chunks com a API do Google... ---")
     
-    # <<-- MUDANÇA PRINCIPAL AQUI
     # A chamada agora é mais simples. O wrapper cuida do 'task_type' internamente.
     embeddings = embeddings_model.embed_documents(texts_for_embedding)
 
