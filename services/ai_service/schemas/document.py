@@ -7,7 +7,7 @@ class AskRequest(BaseModel):
     similarity_threshold: Optional[float] = Field(0.75, gt=0, le=1)
     top_k: Optional[int] = Field(3, gt=0, le=10) 
 
-# --- Novo Schema para o Processamento de Documentos (com validador V2) ---
+# --- Novo Schema para o Processamento de documentos
 class DocumentProcessRequest(BaseModel):
     titulo: str
     subcategoria_id: int
@@ -23,3 +23,16 @@ class DocumentProcessRequest(BaseModel):
         if not info.data.get('solucao') and not v:
             raise ValueError("É necessário fornecer ou 'solucao' (manual) ou 'url_arquivo' (processamento automático).")
         return v
+
+
+# --- Novo Schema para o receber a pergunta base para gerar o assunto pendente
+class PendenciaRequest(BaseModel):
+    question: str
+    consulta_id: int 
+
+
+# --- Novo Schema para ser base do assunto pendente gerado
+class SugestaoIA(BaseModel):
+    titulo_sugerido: str = Field(description="Título curto e direto que resume a pergunta.")
+    categoria_sugerida: str = Field(description="O nome da categoria, seja ela existente ou uma nova.")
+    subcategoria_sugerida: str = Field(description="O nome da nova e específica subcategoria.")

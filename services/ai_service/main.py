@@ -12,6 +12,7 @@ app = FastAPI(
 
 # - /api/documents/process
 # - /api/ask
+# - /api/pendencies
 app.include_router(api_router, prefix="/api")
 
 

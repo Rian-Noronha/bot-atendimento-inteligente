@@ -76,6 +76,7 @@ exports.criarConsultaEObterResposta = async (req, res) => {
         res.status(201).json({
             answer: novaResposta.texto_resposta,
             resposta_id: novaResposta.id,
+            consulta_id: novaConsulta.id,
             url_fonte: novaResposta.url_fonte,
             titulo_fonte: tituloFonte
         });

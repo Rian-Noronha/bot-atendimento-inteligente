@@ -65,6 +65,27 @@
         </div>
     </div>
 
+
+    <div id="feedback-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" id="close-modal-btn">&times;</span>
+            <h4>Avalie a resposta</h4>
+            <p>Sua opinião é muito importante para melhorarmos!</p>
+            
+            <div class="star-rating" id="star-rating">
+                <span class="star" data-value="1">&#9733;</span>
+                <span class="star" data-value="2">&#9733;</span>
+                <span class="star" data-value="3">&#9733;</span>
+                <span class="star" data-value="4">&#9733;</span>
+                <span class="star" data-value="5">&#9733;</span>
+            </div>
+
+            <textarea id="feedback-comment" placeholder="Deixe um comentário (opcional)..."></textarea>
+            
+            <button id="submit-feedback-btn">Enviar Avaliação</button>
+        </div>
+    </div>
+
     <!-- Adiciona type="module" para permitir imports -->
     <script type="module" src="../js/chatbot.js"></script>
 </body>

@@ -14,7 +14,9 @@ router = APIRouter()
 
 DEFAULT_HNSW_EF_SEARCH = 100
 
-@router.post("/ask", summary="Responde a uma pergunta usando RAG com PGVector")
+@router.post("/", 
+             summary="Responde a uma pergunta usando RAG com PGVector")
+
 async def ask_question(request: AskRequest):
     try:
         print(f"A processar a pergunta: '{request.question}'")

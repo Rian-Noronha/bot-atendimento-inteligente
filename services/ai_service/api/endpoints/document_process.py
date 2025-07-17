@@ -5,7 +5,7 @@ from core.document_analyzer import process_and_generate_chunks
 router = APIRouter()
 
 @router.post(
-    "/documents/process",
+    "/",
     summary="Processa e Prepara Documentos para Cadastro",
     tags=["Análise de Documentos"]
 )

@@ -1,8 +1,11 @@
-const { Feedback, ChatResposta, ChatConsulta, AssuntoPendente, Subcategoria } = require('../models');
+const { Feedback, ChatResposta, ChatConsulta } = require('../models');
+const axios = require('axios');
+const AI_SERVICE_PENDENCIES_URL = 'http://localhost:8000/api/pendencies/';
 
 /**
  * Cria um novo feedback para uma resposta.
- * Se o feedback for negativo (util: false), também cria um Assunto Pendente.
+ * Se o feedback for negativo (util: false), envia a pergunta para o AI Service
+ * para análise e criação de um Assunto Pendente.
  */
 exports.criarFeedback = async (req, res) => {
     try {
@@ -16,15 +19,11 @@ exports.criarFeedback = async (req, res) => {
             include: [{
                 model: ChatConsulta,
                 as: 'consulta',
-                include: [{
-                    model: Subcategoria,
-                    as: 'subcategoria'
-                }]
             }]
         });
         
-        if (!resposta) {
-            return res.status(404).json({ message: 'Resposta de chat associada não encontrada.' });
+        if (!resposta || !resposta.consulta) {
+            return res.status(404).json({ message: 'Resposta ou consulta de chat associada não encontrada.' });
         }
 
         const novoFeedback = await Feedback.create({ 
@@ -32,35 +31,43 @@ exports.criarFeedback = async (req, res) => {
             comentario, 
             nota, 
             resposta_id,
-            data_feedback: new Date()
+            consulta_id: resposta.consulta.id, // <<-- 2. GARANTE O VÍNCULO DO FEEDBACK COM A CONSULTA
+            // O campo data_feedback não é necessário se você tiver os timestamps do Sequelize
         });
 
-        // Se o feedback foi negativo, cria um Assunto Pendente
+        // <<-- 3. LÓGICA ATUALIZADA PARA CHAMAR A API -->>
+        // Se o feedback foi negativo, chama o serviço de IA
         if (util === false) {
-            // Garante que a consulta e a subcategoria existem antes de tentar usá-las
-            if (resposta.consulta && resposta.consulta.subcategoria) {
-                await AssuntoPendente.create({
-                    consulta_id: resposta.consulta.id,
-                    texto_assunto: resposta.consulta.pergunta,
-                    // Passando o ID da subcategoria que buscamos na consulta
-                    subcategoria_id: resposta.consulta.subcategoria.id, 
-                    status: 'pendente'
+            try {
+                console.log(`[Node.js] Feedback negativo. Enviando pergunta (Consulta ID: ${resposta.consulta.id}) para o AI Service.`);
+                
+                // Chama o endpoint /api/pendencies/ que você configurou
+                await axios.post(AI_SERVICE_PENDENCIES_URL, {
+                    question: resposta.consulta.pergunta,
+                    consulta_id: resposta.consulta.id 
                 });
-                console.log(`Assunto pendente criado para a consulta ID: ${resposta.consulta.id}`);
-            } else {
-                console.error("Não foi possível criar o assunto pendente: consulta ou subcategoria não encontrada na resposta.");
+
+                console.log(`[Node.js] Pergunta enviada com sucesso para análise.`);
+
+            } catch (aiError) {
+                // Mesmo se a chamada para a IA falhe, o feedback já foi salvo.
+                // Apenas registramos o erro no console do backend.
+                const errorMessage = aiError.response ? aiError.response.data : aiError.message;
+                console.error("[Node.js] Falha ao enviar pergunta para o AI Service:", errorMessage);
             }
         }
 
         res.status(201).json(novoFeedback);
 
     } catch (error) {
+        console.error("Erro ao registrar feedback:", error);
         res.status(500).json({ message: "Erro ao registrar feedback.", error: error.message });
     }
 };
 
 /**
  * Lista todos os feedbacks recebidos.
+ * (Esta função permanece inalterada)
  */
 exports.pegarTodosFeedbacks = async (req, res) => {
     try {

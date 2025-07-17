@@ -18,9 +18,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const feedbackStatus = document.getElementById('feedback-status');
     const logoutButton = document.getElementById('logout-btn');
     const backButton = document.getElementById('back-button');
+    const feedbackModal = document.getElementById('feedback-modal');
+    const closeModalBtn = document.getElementById('close-modal-btn');
+    const stars = document.querySelectorAll('.star');
+    const feedbackComment = document.getElementById('feedback-comment');
+    const submitFeedbackBtn = document.getElementById('submit-feedback-btn');
 
     let currentSessaoId = null;
     let currentRespostaId = null;
+    let currentConsultaId = null;
+    let feedbackIsUtil = null;    
+    let currentRating = 0;  
 
     // --- LÓGICA ESPECÍFICA DA PÁGINA ---
    
@@ -65,6 +73,68 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+
+     // --- LÓGICA DE ABERTURA E FECHAMENTO DO MODAL (NOVA) ---
+    function openFeedbackModal(wasUseful) {
+        feedbackIsUtil = wasUseful; // Salva o valor do clique (true/false)
+        feedbackModal.style.display = 'flex'; // Mostra o modal
+    }
+
+     function closeFeedbackModal() {
+        feedbackModal.style.display = 'none'; // Esconde o modal
+        // Reseta os campos para a próxima avaliação
+        currentRating = 0;
+        feedbackComment.value = '';
+        stars.forEach(star => star.classList.remove('selected'));
+    }
+
+
+     // --- LÓGICA DAS ESTRELAS (NOVA) ---
+    stars.forEach(star => {
+        star.addEventListener('click', () => {
+            currentRating = parseInt(star.getAttribute('data-value'));
+            // Atualiza a aparência das estrelas
+            stars.forEach(s => {
+                s.classList.toggle('selected', parseInt(s.getAttribute('data-value')) <= currentRating);
+            });
+        });
+    });
+
+
+    // --- LÓGICA DE SUBMISSÃO DO FEEDBACK (NOVA FUNÇÃO) ---
+    async function submitFeedback() {
+        if (!currentRespostaId || !currentConsultaId) return;
+        
+        const comentario = feedbackComment.value.trim();
+        feedbackStatus.textContent = 'A enviar feedback...';
+        
+        // Desabilita os botões principais de Sim/Não
+        btnFeedbackSim.disabled = true;
+        btnFeedbackNao.disabled = true;
+
+        try {
+            // Envia todos os dados para a API
+            await apiChatService.criarFeedback({ 
+                util: feedbackIsUtil,
+                nota: currentRating,
+                comentario: comentario,
+                resposta_id: currentRespostaId,
+                consulta_id: currentConsultaId 
+            });
+
+            feedbackStatus.textContent = 'Obrigado pelo seu feedback!';
+            if (!feedbackIsUtil) {
+                feedbackStatus.textContent += ' A sua questão foi registada para análise.';
+            }
+        } catch (error) {
+            console.error("Erro ao enviar feedback:", error);
+            feedbackStatus.textContent = 'Erro ao enviar.';
+            btnFeedbackSim.disabled = false; // Reabilita em caso de erro
+            btnFeedbackNao.disabled = false;
+        } finally {
+            closeFeedbackModal(); // Fecha o modal após o envio
+        }
+    }
 
     /**
      * Inicia a sessão de chat e carrega os temas iniciais.
@@ -140,6 +210,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const respostaCompleta = await apiChatService.criarConsultaEObterResposta(dadosConsulta);
 
             currentRespostaId = respostaCompleta.resposta_id;
+            currentConsultaId = respostaCompleta.consulta_id;
+            
+            
             answerArea.value = respostaCompleta.answer;
 
             if (respostaCompleta.url_fonte) {
@@ -158,13 +231,24 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function handleFeedback(foiUtil) {
-        if (!currentRespostaId) return;
+         if (!currentRespostaId || !currentConsultaId) return;
+        
+        const comentario = feedbackComment.value.trim();
         feedbackStatus.textContent = 'A enviar feedback...';
+        
+        // Desabilita os botões principais de Sim/Não
         btnFeedbackSim.disabled = true;
         btnFeedbackNao.disabled = true;
         
         try {
-            await apiChatService.criarFeedback({ util: foiUtil, resposta_id: currentRespostaId });
+            await apiChatService.criarFeedback({ 
+                util: feedbackIsUtil,
+                nota: currentRating,
+                comentario: comentario,
+                resposta_id: currentRespostaId,
+                consulta_id: currentConsultaId 
+            });
+
             feedbackStatus.textContent = 'Obrigado pelo seu feedback!';
             if (!foiUtil) {
                 feedbackStatus.textContent += ' A sua questão foi registada para análise.';
@@ -172,8 +256,10 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             console.error("Erro ao enviar feedback:", error);
             feedbackStatus.textContent = 'Erro ao enviar.';
-            btnFeedbackSim.disabled = false;
+            btnFeedbackSim.disabled = false; // Reabilita em caso de erro
             btnFeedbackNao.disabled = false;
+        } finally {
+            closeFeedbackModal(); // Fecha o modal após o envio
         }
     }
 
@@ -194,8 +280,21 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    btnFeedbackSim.addEventListener('click', () => handleFeedback(true));
-    btnFeedbackNao.addEventListener('click', () => handleFeedback(false));
+    
+    // <<-- 2. MUDANÇA: AGORA OS BOTÕES ABREM O MODAL EM VEZ DE ENVIAR O FEEDBACK -->>
+    btnFeedbackSim.addEventListener('click', () => openFeedbackModal(true));
+    btnFeedbackNao.addEventListener('click', () => openFeedbackModal(false));
+
+    // <<-- 3. NOVOS LISTENERS PARA CONTROLAR O MODAL -->>
+    closeModalBtn.addEventListener('click', closeFeedbackModal);
+    submitFeedbackBtn.addEventListener('click', submitFeedback);
+    
+    // Fecha o modal se o usuário clicar fora da caixa de conteúdo
+    window.addEventListener('click', (event) => {
+        if (event.target == feedbackModal) {
+            closeFeedbackModal();
+        }
+    });
 
     window.addEventListener('beforeunload', () => {
         if (currentSessaoId) {
